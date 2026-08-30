@@ -1,0 +1,3452 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeForge – Web & Python IDE</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- js-beautify via CDN für automatisches Einrücken / Formatieren -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.9/beautify-html.min.js"></script>
+    
+    <!-- CodeMirror 5 CDN für echtes Syntax-Highlighting & Autocompletion -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { display: flex; height: 100vh; background-color: #1e1e1e; color: #fff; overflow: hidden; user-select: none; }
+        
+        /* Sidebar */
+        #sidebar { width: 220px; background: #252526; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid #333; transition: margin-left 0.3s ease; flex-shrink: 0; }
+        #sidebar.collapsed { margin-left: -220px; }
+        #sidebar input, #sidebar button { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #3c3c3c; color: white; }
+        #sidebar button { background: #007acc; cursor: pointer; border: none; font-weight: bold; }
+        
+        /* Filter-Buttons Style */
+        .type-filter-bar { display: flex; gap: 4px; }
+        .filter-btn {
+            flex: 1;
+            padding: 5px !important;
+            font-size: 11px;
+            background: var(--toggle-inactive-bg) !important;
+            border: 1px solid var(--toggle-inactive-border) !important;
+            color: var(--toggle-inactive-text) !important;
+            font-weight: normal !important;
+        }
+        .filter-btn:hover { background: var(--toggle-inactive-hover-bg) !important; color: var(--toggle-inactive-hover-text) !important; }
+        .filter-btn.active {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+            font-weight: bold !important;
+        }
+
+        /* Backup-Buttons Style */
+        .backup-bar { display: flex; gap: 4px; margin-top: 4px; border-top: 1px solid #333; padding-top: 8px; }
+        .backup-btn { flex: 1; padding: 6px !important; font-size: 11px; background: #4a4a4a !important; }
+        .backup-btn:hover { background: #5a5a5a !important; }
+
+        #project-list { list-style: none; flex-grow: 1; overflow-y: auto; margin-top: 5px; }
+        #project-list li { padding: 8px; margin-top: 5px; background: #2d2d2d; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        #project-list li:hover { background: #37373d; }
+        #project-list li.active { border-left: 3px solid #007acc; background: #37373d; }
+
+        /* Main Area */
+        #main { flex-grow: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; }
+        .top-bar { display: flex; background: #2d2d2d; align-items: center; justify-content: space-between; height: 40px; border-bottom: 1px solid #333; flex-shrink: 0; padding-right: 10px; }
+        .tabs { display: flex; align-items: center; }
+        .tab-btn, .icon-btn { padding: 10px 15px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; }
+        .tab-btn {
+            background: var(--toggle-inactive-bg);
+            color: var(--toggle-inactive-text);
+            border: 1px solid transparent;
+            margin: 4px 2px;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        .tab-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
+        .tab-btn.active {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+        }
+        .icon-btn:hover { background: #333; }
+
+        /* Format & Action Buttons */
+        .action-container { display: flex; gap: 5px; }
+        .action-btn { background: #4a4a4a; color: white; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .action-btn:hover { background: #5a5a5a; }
+
+        /* Tab Content Control */
+        .tab-content { display: none; width: 100%; height: calc(100vh - 40px); }
+        .tab-content.active { display: flex; }
+
+        /* WEB TAB LAYOUT */
+        #web-tab { width: 100%; height: 100%; position: relative; }
+
+        .editors-column { width: 50%; display: flex; flex-direction: column; background: #1e1e1e; min-width: 150px; height: 100%; }
+        
+        .restore-bar { display: flex; gap: 5px; background: #181818; padding: 4px 8px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .restore-btn {
+            background: var(--toggle-inactive-bg);
+            border: 1px solid var(--toggle-inactive-border);
+            color: var(--toggle-inactive-text);
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .restore-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
+        .restore-btn.active-tab {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+        }
+        .restore-btn.active-tab:hover { filter: brightness(1.1); }
+
+        .editor-box { display: flex; flex-direction: column; flex: 1; min-height: 32px; overflow: hidden; }
+        .editor-box.collapsed { display: none !important; }
+        
+        .editor-header { height: 32px; background: #252526; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 12px; font-weight: bold; color: #aaa; user-select: none; flex-shrink: 0; }
+        .editor-header-left { display: flex; align-items: center; gap: 8px; }
+        .toggle-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 0 4px; }
+        .toggle-btn:hover { color: #fff; }
+
+        .row-divider { height: 6px; background: #2d2d2d; cursor: row-resize; transition: background 0.15s; z-index: 5; touch-action: none; flex-shrink: 0; display: none; }
+        .row-divider:hover, .row-divider.dragging { background: #007acc; }
+
+        .col-divider { width: 8px; background: #2d2d2d; cursor: col-resize; transition: background 0.15s; z-index: 10; touch-action: none; flex-shrink: 0; }
+        .col-divider:hover, .col-divider.dragging { background: #007acc; }
+
+        .editor-container { flex-grow: 1; display: flex; background: #1e1e1e; overflow: hidden; position: relative; }
+        .CodeMirror { width: 100%; height: 100%; font-family: monospace; font-size: 13px; line-height: 1.5; background: #1e1e1e !important; color: #d4d4d4 !important; }
+        .CodeMirror-gutters { background: #181818 !important; border-right: 1px solid #282828 !important; }
+        .CodeMirror-linenumber { color: #555 !important; }
+
+        /* Preview Area & JS Console */
+        .preview-container { flex-grow: 1; display: flex; flex-direction: column; background: #fff; min-width: 150px; position: relative; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; height: 35px; padding: 0 10px; background: #252526; font-size: 12px; color: #aaa; border-bottom: 1px solid #333; flex-shrink: 0; }
+        #preview-frame { width: 100%; flex-grow: 1; background: white; border: none; }
+        .drag-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 99; }
+        .dragging-active .drag-overlay { display: block; }
+
+        /* Web Console UI */
+        .js-console-container { height: 140px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
+        .js-console-container.collapsed { display: none !important; }
+        .js-console-header { height: 28px; background: #252526; padding: 0 10px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #333; }
+        #js-console-output { flex-grow: 1; padding: 8px; font-family: monospace; font-size: 12px; overflow-y: auto; white-space: pre-wrap; color: #ccc; }
+
+        /* PYTHON TAB */
+        #python-tab { width: 100%; height: 100%; padding: 15px; flex-direction: column; gap: 10px; background: #1e1e1e; }
+        
+        .py-toolbar { display: flex; justify-content: space-between; align-items: center; height: 32px; flex-shrink: 0; }
+        .py-title { font-size: 13px; font-weight: bold; color: #3572A5; }
+        #run-py-btn { padding: 6px 16px; background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 13px; }
+        #run-py-btn:hover { background: #218838; }
+
+        .py-editor-wrapper { flex: 1; display: flex; border: 1px solid #333; border-radius: 4px; overflow: hidden; background: #1e1e1e; position: relative; }
+        
+        .py-console-title { font-size: 12px; font-weight: bold; color: #aaa; margin-top: 5px; flex-shrink: 0; }
+
+        /* Python Terminal mit direkter Eingabe im Output-Bereich */
+        .python-terminal {
+            /* Feste Terminal-Höhe: die Box bleibt bei wenig und viel Output
+               immer gleich groß; langer Output scrollt innerhalb der Box. */
+            height: 220px;
+            min-height: 220px;
+            max-height: 220px;
+            box-sizing: border-box;
+            background: #000;
+            color: #fff;
+            border-radius: 4px;
+            border: 1px solid var(--input-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: text;
+        }
+
+        #python-output {
+            flex: 1;
+            min-height: 0;
+            background: #000;
+            color: #fff;
+            padding: 12px 12px 0 12px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.45;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+        }
+
+        #python-input-row {
+            display: flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 12px 10px 12px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        #python-input-row.hidden {
+            display: none;
+        }
+
+        #python-input-prompt {
+            color: #fff;
+            white-space: pre;
+            flex-shrink: 0;
+        }
+
+        #python-input {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            color: #fff;
+            border: none;
+            outline: none;
+            font-family: monospace;
+            font-size: 13px;
+            caret-color: #fff;
+            padding: 0;
+        }
+
+        #python-input:disabled {
+            cursor: default;
+        }
+
+        /* Copy-Buttons */
+        .editor-header-right { display: flex; align-items: center; gap: 4px; }
+        .copy-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 3px; transition: background 0.15s, color 0.15s; }
+        .copy-btn:hover { color: #fff; background: #3c3c3c; }
+        .copy-btn.copied { color: #28a745; }
+
+        /* Web-Preview "Code Ausführen" Button */
+        #reset-web-btn, #reset-py-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        #reset-web-btn:hover, #reset-py-btn:hover { background: #bb2d3b; }
+        .preview-header-right { display: flex; align-items: center; gap: 6px; }
+
+        /* =========================================================
+           CODEFORGE PRO UI
+           ========================================================= */
+        :root {
+            --bg: #1e1e1e;
+            --panel: #252526;
+            --panel2: #2d2d2d;
+            --border: #333;
+            --text: #fff;
+            --muted: #aaa;
+            --accent: #007acc;
+            --success: #28a745;
+            --danger: #dc3545;
+
+            /* Einheitliche Toggle/Filter-Zustände (HTML/CSS/JS/Konsole-
+               Buttons, Alle/Web/Python-Filter, Web/Python-Tabs):
+               AKTIV = kräftige Akzentfarbe mit weißer Schrift,
+               INAKTIV = neutrale Panel-Farbe mit gedämpfter Schrift.
+               Gilt identisch in Dark- und Light-Mode, nur die konkreten
+               Farbwerte passen sich pro Theme an. */
+            --toggle-active-bg: #007acc;
+            --toggle-active-text: #ffffff;
+            --toggle-active-border: #007acc;
+            --toggle-inactive-bg: #3a3a3a;
+            --toggle-inactive-text: #aaaaaa;
+            --toggle-inactive-border: #4a4a4a;
+            --toggle-inactive-hover-bg: #4a4a4a;
+            --toggle-inactive-hover-text: #ffffff;
+
+            /* Einheitliches Eingabefeld-System: JEDES Eingabefeld
+               (Text-Input, Textarea, Select) ist permanent umrandet -
+               nicht erst bei Fokus. Fokus hebt die Umrandung nur farblich
+               hervor. Gilt identisch in Dark- und Light-Mode, siehe
+               "PURE LIGHT MODE" weiter unten für die hellen Werte. */
+            --input-border: #5a5f66;
+            --input-border-focus: #4aa3ff;
+            --input-focus-ring: rgba(74, 163, 255, .25);
+        }
+        /* Light-Theme-Variablen werden weiter unten an EINER zentralen
+           Stelle definiert (Abschnitt "PURE LIGHT MODE"), damit es hier
+           keine zwei widersprüchlichen Wertesätze mehr gibt. */
+        body.light-theme {
+            --toggle-active-bg: #0969da;
+            --toggle-active-text: #ffffff;
+            --toggle-active-border: #0969da;
+            --toggle-inactive-bg: #ffffff;
+            --toggle-inactive-text: #4b5563;
+            --toggle-inactive-border: #d0d7de;
+            --toggle-inactive-hover-bg: #eef1f4;
+            --toggle-inactive-hover-text: #111827;
+        }
+        body.light-theme { background: var(--bg); color: var(--text); }
+        body.light-theme #sidebar,
+        body.light-theme .top-bar,
+        body.light-theme .editor-header,
+        body.light-theme .restore-bar,
+        body.light-theme .preview-header,
+        body.light-theme .js-console-header { background: var(--panel); color: var(--text); }
+        body.light-theme .editor-container,
+        body.light-theme .editors-column,
+        body.light-theme #python-tab { background: var(--bg); }
+        body.light-theme #sidebar input,
+        body.light-theme #sidebar button { background: var(--panel2); color: var(--text); border-color: var(--border); }
+
+        #save-status { font-size: 11px; color: #8bc34a; min-width: 82px; text-align: right; }
+        #project-home-btn { font-size: 12px; }
+        #file-tree { display:none; }
+        .project-files { border-top:1px solid var(--border); margin-top:5px; padding-top:7px; }
+        .project-files-title { font-size:11px; color:var(--muted); margin-bottom:4px; }
+        .file-tree-item { padding:5px 7px; border-radius:4px; cursor:pointer; font-size:12px; color:#ccc; }
+        .file-jump-highlight {
+            outline: 2px solid var(--input-border-focus);
+            outline-offset: -2px;
+            transition: outline-color .3s ease;
+        }
+        .file-tree-item:hover, .file-tree-item.active { background:#37373d; color:#fff; }
+        body.light-theme .file-tree-item { color:#555; }
+        body.light-theme .file-tree-item:hover, body.light-theme .file-tree-item.active { background:#ddd; color:#111; }
+
+        #home-screen { position:absolute; inset:0; z-index:200; background:var(--bg); display:none; overflow:auto; }
+        .lang-toggle-btn {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            background: #4a4a4a;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .lang-toggle-btn:hover { background: #5a5a5a; }
+        body.light-theme .lang-toggle-btn {
+            background: #ffffff;
+            color: #1f2328;
+            border-color: #d0d7de;
+        }
+        body.light-theme .lang-toggle-btn:hover { background: #f0f3f6; }
+        #home-screen.active { display:block; }
+        .home-inner { max-width:1000px; margin:0 auto; padding:55px 30px; }
+        .home-logo { font-size:42px; font-weight:800; letter-spacing:-1px; margin-bottom:8px; }
+        .home-subtitle { color:var(--muted); margin-bottom:28px; }
+        .home-actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; margin-bottom:30px; }
+        .home-card { border:1px solid var(--border); background:var(--panel); border-radius:10px; padding:24px; cursor:pointer; transition:.15s; }
+        .home-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+        .home-card h3 { margin:0 0 8px; }
+        .home-card p { color:var(--muted); font-size:13px; line-height:1.5; }
+        #recent-projects { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+        .recent-item { background:var(--panel); border:1px solid var(--border); padding:12px; border-radius:7px; cursor:pointer; }
+        .recent-item:hover { border-color:var(--accent); }
+
+        #project-modal, #command-palette, #search-modal {
+            position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center;
+            background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
+        }
+        #project-modal.open, #command-palette.open, #search-modal.open { display:flex; }
+        .modal-card { width:min(560px,92vw); background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+        .modal-card h2 { margin-bottom:16px; }
+        .modal-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+        .modal-close-btn {
+            background: #4a4a4a;
+            color: #fff;
+            border: 1px solid #555;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .modal-close-btn:hover { background: #5a5a5a; }
+        body.light-theme .modal-close-btn {
+            background: #ffffff;
+            color: #1f2328;
+            border-color: #d0d7de;
+        }
+        body.light-theme .modal-close-btn:hover { background: #f0f3f6; }
+        .modal-row { margin-bottom:14px; }
+        .modal-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+        .modal-row input, .modal-row select { width:100%; padding:10px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:5px; }
+        .type-choice { display:flex; gap:8px; }
+        .type-choice button { flex:1; padding:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:6px; cursor:pointer; }
+        .type-choice button.active { border-color:var(--accent); background:rgba(0,122,204,.18); }
+        .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+        .modal-actions button { padding:9px 15px; border:0; border-radius:5px; cursor:pointer; }
+        .primary-btn { background:var(--accent); color:#fff; }
+        .secondary-btn { background:var(--panel2); color:var(--text); }
+
+        #command-input, #search-input-modal { width:100%; padding:12px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; font-family:monospace; }
+        #command-list { margin-top:10px; max-height:330px; overflow:auto; }
+        .command-item { padding:10px; border-radius:5px; cursor:pointer; }
+        .command-item:hover { background:var(--panel2); }
+        .search-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .search-grid input { padding:9px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:5px; }
+        .search-result { margin-top:10px; max-height:250px; overflow:auto; font-size:12px; color:var(--muted); }
+
+        /* =========================================================
+           EINHEITLICHES EINGABEFELD-SYSTEM
+           Jedes Text-Eingabefeld der App (egal ob Sidebar-Suche, Modals,
+           Command Palette, Python-Terminal-Eingabe, "Neues Projekt"...)
+           ist PERMANENT umrandet - in Dark UND Light Mode - statt nur bei
+           Fokus. Bei Fokus wird die Umrandung zusätzlich farblich betont
+           (Akzentfarbe + dezenter Schein), damit klar ist, wo man gerade
+           tippt. Eine Regel für die ganze App statt verstreuter Einzelfälle.
+           ========================================================= */
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+        textarea,
+        select {
+            border: 1px solid var(--input-border) !important;
+        }
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--input-border-focus) !important;
+            outline: 2px solid var(--input-focus-ring) !important;
+            outline-offset: 0;
+        }
+
+        #mobile-file-tabs { display:none; }
+        @media (max-width: 760px) {
+            #sidebar { width:190px; }
+            .home-actions { grid-template-columns:1fr; }
+            .home-inner { padding:35px 18px; }
+            .home-logo { font-size:32px; }
+            #web-tab .editors-column { width:100% !important; }
+            #web-tab .col-divider { display:none !important; }
+            #web-tab .preview-container { display:none; }
+            #mobile-file-tabs { display:flex; background:var(--panel); border-bottom:1px solid var(--border); }
+            #mobile-file-tabs button { flex:1; padding:8px; border:0; background:transparent; color:var(--muted); }
+            #mobile-file-tabs button.active { color:#fff; background:var(--accent); }
+            .editor-box.mobile-hidden { display:none !important; }
+            .action-container .action-btn:nth-child(1), .action-container .action-btn:nth-child(2) { display:none; }
+            .preview-header-right .icon-btn { display:none; }
+            .search-grid { grid-template-columns:1fr; }
+        }
+
+    
+        /* =========================================================
+           PURE LIGHT MODE
+           ========================================================= */
+        body.light-theme {
+            --bg: #f4f6f8;
+            --panel: #ffffff;
+            --panel2: #eef1f4;
+            --border: #d6dbe1;
+            --text: #1f2328;
+            --muted: #68717c;
+            --accent: #0969da;
+            --success: #18864b;
+            --danger: #d1242f;
+            --input-border: #d0d7de;
+            --input-border-focus: #0969da;
+            --input-focus-ring: rgba(9, 105, 218, .12);
+            background: #f4f6f8 !important;
+            color: #1f2328 !important;
+        }
+
+        body.light-theme,
+        body.light-theme * {
+            scrollbar-color: #c5cbd2 #f1f3f5;
+        }
+
+        body.light-theme #sidebar,
+        body.light-theme .top-bar,
+        body.light-theme .editor-header,
+        body.light-theme .restore-bar,
+        body.light-theme .preview-header,
+        body.light-theme .js-console-header,
+        body.light-theme .terminal-header,
+        body.light-theme .tab-bar,
+        body.light-theme .action-bar,
+        body.light-theme .python-toolbar {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d6dbe1 !important;
+        }
+
+        body.light-theme #main,
+        body.light-theme .main-content,
+        body.light-theme .editor-container,
+        body.light-theme .editors-column,
+        body.light-theme #web-tab,
+        body.light-theme #python-tab,
+        body.light-theme .preview-container,
+        body.light-theme .console-container,
+        body.light-theme .terminal-container {
+            background: #f4f6f8 !important;
+            color: #1f2328 !important;
+        }
+
+        /* Alle normalen Eingabefelder */
+        body.light-theme input,
+        body.light-theme textarea,
+        body.light-theme select,
+        body.light-theme button:not(.primary-btn):not(#reset-web-btn):not(#reset-py-btn):not(#run-py-btn):not(.action-btn):not(.active):not(.active-tab) {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #cfd5dc !important;
+        }
+
+        body.light-theme input::placeholder,
+        body.light-theme textarea::placeholder {
+            color: #8a929c !important;
+        }
+
+        body.light-theme input:focus,
+        body.light-theme textarea:focus,
+        body.light-theme select:focus {
+            border-color: #0969da !important;
+            outline: 2px solid rgba(9,105,218,.12) !important;
+        }
+
+        /* Sidebar */
+        body.light-theme #sidebar input,
+        body.light-theme #sidebar button,
+        body.light-theme #project-search,
+        body.light-theme .search-input {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d0d7de !important;
+        }
+
+        body.light-theme #sidebar h3,
+        body.light-theme #sidebar label,
+        body.light-theme #sidebar .project-filter,
+        body.light-theme #sidebar .muted {
+            color: #59636e !important;
+        }
+
+        body.light-theme #sidebar button:hover {
+            background: #f0f3f6 !important;
+        }
+
+        /* Projektliste / Dateibaum */
+        body.light-theme #project-list li,
+        body.light-theme .project-item,
+        body.light-theme .file-tree-item {
+            color: #30363d !important;
+        }
+
+        body.light-theme #project-list li:hover,
+        body.light-theme #project-list li.active,
+        body.light-theme .project-item:hover,
+        body.light-theme .project-item.active,
+        body.light-theme .file-tree-item:hover,
+        body.light-theme .file-tree-item.active {
+            background: #e9eef3 !important;
+            color: #111827 !important;
+        }
+
+        /* Tabs und Toolbar */
+        body.light-theme .icon-btn,
+        body.light-theme .copy-btn {
+            color: #3f4852 !important;
+            background: #ffffff !important;
+            border-color: #d0d7de !important;
+        }
+
+        body.light-theme .icon-btn:hover,
+        body.light-theme .copy-btn:hover {
+            background: #eef1f4 !important;
+            color: #111827 !important;
+        }
+
+        /* .action-btn (↩ ↪ ✨ Formatieren, 🔎 Suchen, ⌘ Command, 🌓 Theme,
+           ⛶ Editor) im selben neutralen Stil wie die Sidebar-Buttons
+           "Neues Projekt", "Speichern" etc. (.colored-sidebar-btn). */
+        body.light-theme .action-btn {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d0d7de !important;
+        }
+        body.light-theme .action-btn:hover {
+            background: #f0f3f6 !important;
+            color: #1f2328 !important;
+        }
+
+        /* body.light-theme .tab-btn.active ist jetzt über die
+           einheitlichen --toggle-active-* Tokens in der Basisregel
+           von .tab-btn.active geregelt (siehe oben, gleiches Prinzip
+           wie bei .restore-btn.active-tab und .filter-btn.active). */
+
+        /* CodeMirror komplett hell */
+        body.light-theme .CodeMirror,
+        body.light-theme .CodeMirror-gutters,
+        body.light-theme .CodeMirror-scroll,
+        body.light-theme .CodeMirror-sizer,
+        body.light-theme .CodeMirror-lines {
+            background: #ffffff !important;
+            color: #24292f !important;
+        }
+
+        body.light-theme .CodeMirror-gutters {
+            border-right: 1px solid #e1e5ea !important;
+        }
+
+        body.light-theme .CodeMirror-linenumber {
+            color: #8c959f !important;
+        }
+
+        body.light-theme .CodeMirror-cursor {
+            border-left-color: #24292f !important;
+        }
+
+        body.light-theme .CodeMirror-selected,
+        body.light-theme .CodeMirror-focused .CodeMirror-selected {
+            background: #cfe8ff !important;
+        }
+
+        body.light-theme .CodeMirror-activeline-background {
+            background: #f6f8fa !important;
+        }
+
+        /* Python Terminal */
+        body.light-theme #python-output,
+        body.light-theme #python-input,
+        body.light-theme .terminal-output,
+        body.light-theme .terminal-input,
+        body.light-theme #python-input-container {
+            background: #ffffff !important;
+            color: #24292f !important;
+            border-color: #d6dbe1 !important;
+        }
+
+        body.light-theme #python-input {
+            caret-color: #24292f !important;
+        }
+
+        /* Restore / Import / Export-Bereich */
+        body.light-theme .restore-bar,
+        body.light-theme .restore-bar *,
+        body.light-theme .import-export,
+        body.light-theme .import-export *,
+        body.light-theme .export-container,
+        body.light-theme .import-container {
+            color: #30363d !important;
+        }
+
+        body.light-theme .restore-bar button,
+        body.light-theme .import-export button,
+        body.light-theme .export-container button,
+        body.light-theme .import-container button {
+            background: #ffffff !important;
+            color: #30363d !important;
+            border: 1px solid #cfd5dc !important;
+        }
+
+        body.light-theme .restore-bar button:hover,
+        body.light-theme .import-export button:hover,
+        body.light-theme .export-container button:hover,
+        body.light-theme .import-container button:hover {
+            background: #eef1f4 !important;
+        }
+
+        body.light-theme .restore-bar input,
+        body.light-theme .import-export input,
+        body.light-theme .import-export textarea {
+            background: #ffffff !important;
+            color: #24292f !important;
+            border-color: #cfd5dc !important;
+        }
+
+        /* Dialoge / Modals */
+        body.light-theme #project-modal,
+        body.light-theme #command-palette,
+        body.light-theme #search-modal {
+            background: rgba(31,35,40,.28) !important;
+        }
+
+        body.light-theme .modal-card {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d0d7de !important;
+            box-shadow: 0 18px 50px rgba(31,35,40,.18) !important;
+        }
+
+        body.light-theme .modal-card h2,
+        body.light-theme .modal-card h3,
+        body.light-theme .modal-card label {
+            color: #1f2328 !important;
+        }
+
+        body.light-theme .modal-row input,
+        body.light-theme .modal-row select,
+        body.light-theme #command-input,
+        body.light-theme #search-input-modal,
+        body.light-theme #search-term,
+        body.light-theme #replace-term {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #cfd5dc !important;
+        }
+
+        body.light-theme .secondary-btn {
+            background: #f3f4f6 !important;
+            color: #24292f !important;
+            border: 1px solid #d0d7de !important;
+        }
+
+        body.light-theme .secondary-btn:hover {
+            background: #e9ecef !important;
+        }
+
+        body.light-theme .type-choice button {
+            background: #ffffff !important;
+            color: #30363d !important;
+            border-color: #cfd5dc !important;
+        }
+
+        body.light-theme .type-choice button.active {
+            background: #e8f1fb !important;
+            color: #0969da !important;
+            border-color: #9cc3e8 !important;
+        }
+
+        body.light-theme .command-item:hover {
+            background: #eef1f4 !important;
+        }
+
+        /* Startseite */
+        body.light-theme #home-screen {
+            background: #f4f6f8 !important;
+            color: #1f2328 !important;
+        }
+
+        body.light-theme .home-card,
+        body.light-theme .recent-item {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d6dbe1 !important;
+        }
+
+        body.light-theme .home-card:hover,
+        body.light-theme .recent-item:hover {
+            border-color: #0969da !important;
+            box-shadow: 0 5px 18px rgba(31,35,40,.08);
+        }
+
+        body.light-theme .home-subtitle,
+        body.light-theme .home-card p {
+            color: #68717c !important;
+        }
+
+        /* Select-Optionen */
+        body.light-theme option {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+        }
+
+        /* Trenner */
+        body.light-theme .col-divider,
+        body.light-theme .editor-divider,
+        body.light-theme hr {
+            background: #d6dbe1 !important;
+            border-color: #d6dbe1 !important;
+        }
+
+        /* Speichern-Anzeige */
+        body.light-theme #save-status {
+            color: #18864b !important;
+        }
+
+    
+        #browser-back-btn {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 1000;
+            width: 34px;
+            height: 34px;
+            border: 1px solid #3d434a;
+            border-radius: 7px;
+            background: #252526;
+            color: #fff;
+            font-size: 25px;
+            line-height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #browser-back-btn:hover { background: #333; }
+        body.light-theme #browser-back-btn {
+            background: #fff !important;
+            color: #24292f !important;
+            border-color: #d0d7de !important;
+            box-shadow: 0 1px 3px rgba(31,35,40,.08);
+        }
+        body.light-theme #browser-back-btn:hover {
+            background: #f3f4f6 !important;
+        }
+
+        /* Projektliste bleibt im Light Mode dauerhaft hell. */
+        body.light-theme #project-list,
+        body.light-theme #project-list li,
+        body.light-theme #project-list .project-item {
+            background: #ffffff !important;
+            color: #24292f !important;
+        }
+        body.light-theme #project-list li:hover,
+        body.light-theme #project-list li.active,
+        body.light-theme #project-list .project-item:hover,
+        body.light-theme #project-list .project-item.active {
+            background: #eef1f4 !important;
+            color: #111827 !important;
+        }
+
+        /* Web-Konsole im Light Mode wirklich weiß. */
+        body.light-theme .js-console-header {
+            background: #ffffff !important;
+            color: #24292f !important;
+        }
+
+    
+        body.light-theme .cm-s-default .cm-keyword { color: #8b1a9b !important; font-weight: 600; }
+        body.light-theme .cm-s-default .cm-atom { color: #005cc5 !important; }
+        body.light-theme .cm-s-default .cm-number { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-def { color: #8250df !important; }
+        body.light-theme .cm-s-default .cm-variable { color: #24292f !important; }
+        body.light-theme .cm-s-default .cm-variable-2 { color: #0a6b5b !important; }
+        body.light-theme .cm-s-default .cm-variable-3 { color: #116329 !important; }
+        body.light-theme .cm-s-default .cm-property { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-operator { color: #cf222e !important; }
+        body.light-theme .cm-s-default .cm-comment { color: #6e7781 !important; font-style: italic; }
+        body.light-theme .cm-s-default .cm-string,
+        body.light-theme .cm-s-default .cm-string-2 {
+            color: #0a6b5b !important;
+        }
+        body.light-theme .cm-s-default .cm-meta { color: #9a6700 !important; }
+        body.light-theme .cm-s-default .cm-qualifier { color: #953800 !important; }
+        body.light-theme .cm-s-default .cm-builtin { color: #8250df !important; }
+        body.light-theme .cm-s-default .cm-tag { color: #116329 !important; }
+        body.light-theme .cm-s-default .cm-attribute { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-bracket { color: #57606a !important; }
+        body.light-theme .cm-s-default .cm-link { color: #0969da !important; text-decoration: underline; }
+        body.light-theme .cm-s-default .cm-error { color: #cf222e !important; background: transparent !important; }
+        body.light-theme .cm-s-default .cm-searching {
+            background: #fff8c5 !important;
+            outline: 1px solid #d4a72c !important;
+        }
+
+    
+        #text-dialog {
+            position: fixed; inset: 0; z-index: 700;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(0,0,0,.65); backdrop-filter: blur(2px);
+        }
+        #text-dialog.open { display:flex; }
+        body.light-theme #text-dialog { background: rgba(31,35,40,.28) !important; }
+        body.light-theme #text-dialog .modal-card {
+            background:#fff !important; color:#1f2328 !important;
+            border-color:#d0d7de !important;
+        }
+
+    
+        .console-entry {
+            display:grid;
+            grid-template-columns:24px 1fr;
+            gap:6px;
+            padding:4px 0;
+            border-bottom:1px solid rgba(128,128,128,.12);
+            white-space:pre-wrap;
+            word-break:break-word;
+        }
+        .console-entry .console-icon { font-weight:700; }
+        .console-entry.info .console-icon { color:#0969da; }
+        .console-entry.success .console-icon { color:#18864b; }
+        .console-entry.warn .console-icon { color:#9a6700; }
+        .console-entry.error .console-icon { color:#cf222e; }
+        .console-location {
+            display:block;
+            margin-top:2px;
+            color:#6e7781;
+            font-size:11px;
+        }
+        .console-entry-clickable {
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .console-entry-clickable:hover {
+            background: rgba(255,255,255,.07);
+        }
+        body.light-theme .console-entry-clickable:hover {
+            background: rgba(0,0,0,.05);
+        }
+        .console-entry-clickable .console-location {
+            text-decoration: underline;
+        }
+        /* Zeile im JS-Editor, zu der von einem Konsolen-Fehler aus gesprungen wurde */
+        .js-error-line-highlight {
+            background: rgba(220,53,69,.28) !important;
+            transition: background 1.4s ease;
+        }
+        body:not(.light-theme) .console-entry.info .console-icon { color:#58a6ff; }
+        body:not(.light-theme) .console-entry.success .console-icon { color:#7ee787; }
+        body:not(.light-theme) .console-entry.warn .console-icon { color:#d29922; }
+        body:not(.light-theme) .console-entry.error .console-icon { color:#ff7b72; }
+
+    
+        /* Sidebar-Buttons: in beiden Themes neutral (wie der Light-Mode-Look),
+           also keine farbigen Hintergründe mehr, nur fette Schrift. */
+        #sidebar > h3 {
+            margin-left: 40px !important;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+        }
+        .colored-sidebar-btn {
+            font-weight: 600 !important;
+            background: #4a4a4a !important;
+            color: #fff !important;
+            border: 1px solid #555 !important;
+        }
+        .colored-sidebar-btn:hover {
+            background: #5a5a5a !important;
+        }
+        body.light-theme .colored-sidebar-btn {
+            background: #ffffff !important;
+            color: #1f2328 !important;
+            border-color: #d0d7de !important;
+        }
+        body.light-theme .colored-sidebar-btn:hover {
+            background: #f0f3f6 !important;
+        }
+
+        /* Backup import/export buttons also keep a clear light-mode appearance. */
+        body.light-theme .backup-btn {
+            background:#ffffff !important;
+            color:#30363d !important;
+            border:1px solid #cfd5dc !important;
+        }
+        body.light-theme .backup-btn:hover {
+            background:#eef1f4 !important;
+        }
+
+        /* .filter-btn / .filter-btn.active sind jetzt über die
+           einheitlichen --toggle-active-*/--toggle-inactive-* Tokens
+           in der Basisregel geregelt (siehe oben) - gilt automatisch
+           für Dark- und Light-Mode gleichermaßen. */
+
+        /* Back arrow must never overlap the CodeForge title. */
+        #browser-back-btn { left:8px !important; }
+        #sidebar { padding-top:15px !important; }
+        #sidebar > h3 { padding-left:18px; }
+
+        /* Wenn die Sidebar eingeklappt ist, rutscht die Top-Bar bis an den
+           linken Rand und der Sidebar-Toggle (☰) landet genau unter dem
+           fixen Zurück-Pfeil oben links. Deshalb die Top-Bar-Inhalte in
+           diesem Fall etwas einrücken, damit sich beide Buttons nicht
+           mehr überlappen und die Sidebar wieder ausgeklappt werden kann. */
+        body.sidebar-collapsed .top-bar { padding-left: 50px; transition: padding-left .2s ease; }
+        @media (max-width:760px) {
+            body.sidebar-collapsed .top-bar { padding-left: 46px; }
+        }
+
+        /* The actual console element in this app is #js-console-output. */
+        body.light-theme #js-console-output {
+            background:#ffffff !important;
+            color:#24292f !important;
+            border-color:#d6dbe1 !important;
+        }
+        body.light-theme .console-entry {
+            border-bottom-color: rgba(0,0,0,.08) !important;
+        }
+        body.light-theme .console-location { color:#6e7781 !important; }
+
+        /* Console button */
+        #clear-console-btn {
+            background:#f3f4f6 !important;
+            color:#24292f !important;
+            border:1px solid #cfd5dc !important;
+            cursor:pointer !important;
+        }
+        #clear-console-btn:hover { background:#e5e7eb !important; }
+        body:not(.light-theme) #clear-console-btn {
+            background:#3a3a3a !important;
+            color:#fff !important;
+            border-color:#555 !important;
+        }
+
+    
+        #confirm-dialog {
+            position:fixed; inset:0; z-index:710; display:none; align-items:center; justify-content:center;
+            background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
+        }
+        #confirm-dialog.open { display:flex; }
+        body.light-theme #confirm-dialog { background:rgba(31,35,40,.28) !important; }
+
+    
+        #sidebar > h3 {
+            margin-top: 2px !important;
+            margin-left: 42px !important;
+            padding-left: 0 !important;
+        }
+        @media (max-width:760px) {
+            #browser-back-btn { left:6px !important; top:6px !important; }
+            #sidebar > h3 { margin-left:42px !important; }
+        }
+
+    
+        /* Sidebar-Aktionsbuttons bleiben im Light Mode neutral (weiß/grau,
+           fette Schrift) statt farbig – siehe .colored-sidebar-btn oben. */
+
+    
+        /* =========================================================
+           EDITOR DIVIDERS / SLIDERS – gleiche Optik wie Live Preview
+           (row-divider = Trenner zwischen HTML/CSS/JS,
+            col-divider = Trenner zwischen Editoren und Vorschau)
+           ========================================================= */
+        .col-divider,
+        .row-divider,
+        .editor-divider,
+        .resize-handle,
+        .splitter {
+            background: #4a4a4a !important;
+            border: 0 !important;
+            opacity: .9;
+            transition: background .15s, opacity .15s;
+        }
+        .col-divider:hover,
+        .row-divider:hover,
+        .editor-divider:hover,
+        .resize-handle:hover,
+        .splitter:hover {
+            background: #5a5a5a !important;
+            opacity: 1;
+        }
+        /* Im Light Mode: helle, dezente Trenner wie im Live-Vorschau-Bereich */
+        body.light-theme .col-divider,
+        body.light-theme .row-divider,
+        body.light-theme .editor-divider,
+        body.light-theme .resize-handle,
+        body.light-theme .splitter {
+            background: #e5e7eb !important;
+            border-color: #e5e7eb !important;
+            opacity: 1 !important;
+        }
+        body.light-theme .col-divider:hover,
+        body.light-theme .row-divider:hover,
+        body.light-theme .editor-divider:hover,
+        body.light-theme .resize-handle:hover,
+        body.light-theme .splitter:hover {
+            background: #d1d5db !important;
+        }
+
+        /* Gleiche Dicke wie die Trenner zwischen HTML/CSS/JS (.row-divider, 6px) */
+        .col-divider {
+            width: 6px !important;
+            cursor: col-resize !important;
+        }
+        .editor-divider {
+            height: 6px !important;
+            cursor: row-resize !important;
+        }
+
+    
+        #close-web-console {
+            margin-left: auto !important;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        body.light-theme #close-web-console {
+            background: #fff !important;
+            color: #24292f !important;
+            border-color: #d0d7de !important;
+        }
+
+        /* =========================================================
+           EINGEBLENDET/AUSGEBLENDET-STATUS DER HTML/CSS/JS/KONSOLE-
+           TOGGLE-BUTTONS (oben in der restore-bar): aktiv = blau,
+           inaktiv = weiß im Light Mode - identisch zum Dark Mode
+           (dort: aktiv = blau, inaktiv = dunkelgrau).
+           ========================================================= */
+        body.light-theme .restore-btn.active-tab {
+            background: #0969da !important;
+            color: #ffffff !important;
+            border-color: #0969da !important;
+        }
+        body.light-theme .restore-btn.active-tab:hover {
+            background: #0a58ca !important;
+            color: #ffffff !important;
+        }
+        body.light-theme .restore-btn:not(.active-tab) {
+            background: #ffffff !important;
+            color: #4b5563 !important;
+            border-color: #d0d7de !important;
+        }
+        body.light-theme .restore-btn:not(.active-tab):hover {
+            background: #eef1f4 !important;
+            color: #111827 !important;
+        }
+
+    
+        /* =========================================================
+           HIGH-CONTRAST LIGHT CODE HIGHLIGHTING
+           ========================================================= */
+        body.light-theme .CodeMirror {
+            color: #1f2328 !important;
+            background: #ffffff !important;
+        }
+        body.light-theme .CodeMirror .cm-keyword { color: #7a1fa2 !important; font-weight: 700; }
+        body.light-theme .CodeMirror .cm-atom { color: #0550ae !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-number { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-def { color: #8250df !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-variable { color: #24292f !important; }
+        body.light-theme .CodeMirror .cm-variable-2 { color: #0a6b5b !important; }
+        body.light-theme .CodeMirror .cm-variable-3 { color: #116329 !important; }
+        body.light-theme .CodeMirror .cm-property { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-operator { color: #cf222e !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-comment { color: #6e7781 !important; font-style: italic; }
+        body.light-theme .CodeMirror .cm-string,
+        body.light-theme .CodeMirror .cm-string-2 { color: #0a6b5b !important; }
+        body.light-theme .CodeMirror .cm-meta { color: #9a6700 !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-qualifier { color: #953800 !important; }
+        body.light-theme .CodeMirror .cm-builtin { color: #8250df !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-tag { color: #cf222e !important; font-weight: 700; }
+        body.light-theme .CodeMirror .cm-attribute { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-bracket { color: #57606a !important; }
+        body.light-theme .CodeMirror .cm-link { color: #0969da !important; }
+        body.light-theme .CodeMirror .cm-error {
+            color: #cf222e !important;
+            background: transparent !important;
+            text-decoration: underline wavy #cf222e;
+        }
+
+        /* Markierungen / Suchhighlight deutlich lesbarer */
+        body.light-theme .CodeMirror-selected,
+        body.light-theme .CodeMirror-focused .CodeMirror-selected {
+            background: #b6d7ff !important;
+        }
+        body.light-theme .CodeMirror-activeline-background {
+            background: #f0f6fc !important;
+        }
+        body.light-theme .cm-s-default .cm-searching {
+            background: #fff3b0 !important;
+            color: #1f2328 !important;
+            outline: 2px solid #d4a72c !important;
+        }
+
+    
+    
+        /* ===== WEB LIVE PREVIEW FIX ===== */
+        /* Nur anwenden, wenn der Web-Tab auch wirklich aktiv ist - sonst
+           würde er (wie zuvor) IMMER angezeigt und sich mit dem
+           Python-Tab überlappen/vermischen. */
+        #web-tab.active {
+            display: flex !important;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #web-tab .editors-column,
+        #web-tab .preview-container,
+        #web-tab .preview-panel,
+        #web-tab .live-preview {
+            min-height: 0;
+        }
+
+        #web-tab .preview-container,
+        #web-tab .preview-panel,
+        #web-tab .live-preview {
+            display: flex !important;
+            flex-direction: column;
+            flex: 1 1 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        #web-tab iframe,
+        #preview-frame {
+            display: block !important;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            border: 0;
+            background: #fff;
+        }
+
+        body.light-theme #web-tab .preview-container,
+        body.light-theme #web-tab .preview-panel,
+        body.light-theme #web-tab .live-preview {
+            background: #fff !important;
+        }
+
+    
+        /* =========================================================
+           FINAL PYTHON + FILTER LIGHT MODE FIX
+           ========================================================= */
+
+        /* Python: den schwarzen Terminal-/Eingabe-Balken im Light Mode
+           vollständig entfernen und durch die helle Oberfläche ersetzen. */
+        body.light-theme .python-terminal,
+        body.light-theme #python-output,
+        body.light-theme #python-input-row,
+        body.light-theme #python-input,
+        body.light-theme #python-input-prompt {
+            background: #ffffff !important;
+            color: #24292f !important;
+            border-color: #d0d7de !important;
+        }
+
+        /* .python-terminal Rahmenfarbe kommt jetzt einheitlich aus
+           var(--input-border) (siehe :root/.light-theme) - keine
+           doppelte Definition mehr nötig. */
+
+        body.light-theme #python-input {
+            caret-color: #24292f !important;
+        }
+
+        /* Mehrere Python-Eingaben: genug Höhe und saubere Zeilen,
+           damit Text nicht oben/unten abgeschnitten wird. */
+        body.light-theme #python-output {
+            padding: 12px !important;
+            line-height: 1.65 !important;
+            overflow-y: auto !important;
+        }
+
+        body.light-theme #python-input-row {
+            min-height: 40px !important;
+            height: auto !important;
+            padding: 7px 12px 8px !important;
+            align-items: center !important;
+            line-height: 1.5 !important;
+        }
+
+        body.light-theme #python-input-prompt,
+        body.light-theme #python-input {
+            line-height: 1.5 !important;
+            min-height: 24px !important;
+        }
+
+        body.light-theme #python-input {
+            padding: 2px 0 !important;
+        }
+
+        /* Filter: ausgewählter Filter immer deutlich blau,
+           nicht ausgewählte Filter weiß – wie im Dark Mode. */
+        body.light-theme .type-filter-bar .filter-btn.active,
+        body.light-theme #filter-btn-all.active,
+        body.light-theme #filter-btn-web.active,
+        body.light-theme #filter-btn-python.active {
+            background: #0969da !important;
+            color: #ffffff !important;
+            border-color: #0969da !important;
+            font-weight: bold !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn:not(.active) {
+            background: #ffffff !important;
+            color: #4b5563 !important;
+            border-color: #d0d7de !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn:not(.active):hover {
+            background: #eef1f4 !important;
+            color: #1f2328 !important;
+        }
+
+    
+        /* Fix: aktiver Filter bleibt beim Hover lesbar */
+        body.light-theme .type-filter-bar .filter-btn.active,
+        body.light-theme .type-filter-bar .filter-btn.active:hover,
+        body.light-theme .type-filter-bar .filter-btn.active:focus,
+        body.light-theme .type-filter-bar .filter-btn.active:active,
+        body.light-theme #filter-btn-all.active,
+        body.light-theme #filter-btn-all.active:hover,
+        body.light-theme #filter-btn-web.active,
+        body.light-theme #filter-btn-web.active:hover,
+        body.light-theme #filter-btn-python.active,
+        body.light-theme #filter-btn-python.active:hover {
+            background: #0969da !important;
+            color: #ffffff !important;
+            border-color: #0969da !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn.active *,
+        body.light-theme .type-filter-bar .filter-btn.active:hover * {
+            color: #ffffff !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+
+
+        /* =========================================================
+           FINAL PYTHON CONSOLE LAYOUT LOCK
+           Die Konsole bleibt immer an derselben Position und Höhe.
+           Der Editor darf bei langem Code nicht mehr die Konsole
+           nach unten schieben – in Light- und Dark-Mode identisch.
+           ========================================================= */
+        /* Python-Tab darf nur angezeigt werden, wenn der Python-Tab aktiv ist.
+           Dadurch vermischt sich Python nicht mehr mit dem Web-Tab. */
+        #python-tab {
+            min-height: 0 !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            flex-direction: column;
+        }
+
+        #python-tab:not(.active) {
+            display: none !important;
+        }
+
+        #python-tab.active {
+            display: flex !important;
+            min-height: 0 !important;
+            height: 100% !important;
+            overflow: hidden !important;
+        }
+
+        .py-editor-wrapper {
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            overflow: hidden !important;
+        }
+
+        .py-editor-wrapper .CodeMirror {
+            min-height: 0 !important;
+            height: 100% !important;
+            max-height: 100% !important;
+            overflow: hidden !important;
+        }
+
+        .python-terminal {
+            height: 220px !important;
+            min-height: 220px !important;
+            max-height: 220px !important;
+            flex: 0 0 220px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        #python-output {
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+        }
+
+        /* Dark Mode: Python-Ausgabe immer weiß statt grün. */
+        body:not(.light-theme) #python-output,
+        body:not(.light-theme) #python-input,
+        body:not(.light-theme) #python-input-prompt {
+            color: #ffffff !important;
+        }
+
+        body:not(.light-theme) #python-input {
+            caret-color: #ffffff !important;
+        }
+
+    </style>
+</head>
+<body>
+    <button id="browser-back-btn" onclick="goBackToPreviousView()" data-i18n-title="backBtnTitle" title="Zur vorherigen Ansicht">‹</button>
+
+    <div id="home-screen">
+        <button id="app-lang-toggle" class="lang-toggle-btn" onclick="toggleAppLang()" title="Sprache wechseln (Deutsch/Englisch)">🇩🇪 Deutsch</button>
+        <div class="home-inner">
+            <div class="home-logo">⚡ CodeForge</div>
+            <div class="home-subtitle" data-i18n="homeSubtitle">Deine lokale Web- und Python-Entwicklungsumgebung.</div>
+            <div class="home-actions">
+                <div class="home-card" onclick="openProjectModal('web')">
+                    <h3 data-i18n="homeWebTitle">🌐 Web-Projekt</h3>
+                    <p data-i18n="homeWebDesc">HTML, CSS und JavaScript mit Live-Vorschau und Konsole.</p>
+                </div>
+                <div class="home-card" onclick="openProjectModal('python')">
+                    <h3 data-i18n="homePyTitle">🐍 Python-Projekt</h3>
+                    <p data-i18n="homePyDesc">Python direkt im Browser mit interaktivem Terminal.</p>
+                </div>
+            </div>
+            <h3 id="home-recent-title" style="margin-bottom:10px;" data-i18n="homeRecent">Zuletzt geöffnet</h3>
+            <div id="recent-projects"></div>
+        </div>
+    </div>
+
+    
+    <div id="confirm-dialog">
+        <div class="modal-card">
+            <h2 id="confirm-dialog-title">Bestätigen</h2>
+            <div id="confirm-dialog-message" style="line-height:1.5;color:var(--muted);"></div>
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="closeConfirmDialog(false)" data-i18n="cancel">Abbrechen</button>
+                <button class="primary-btn" id="confirm-dialog-ok" onclick="closeConfirmDialog(true)" data-i18n="confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="text-dialog">
+        <div class="modal-card">
+            <h2 id="text-dialog-title">Eingabe</h2>
+            <div class="modal-row">
+                <label id="text-dialog-label">Bitte eingeben</label>
+                <input id="text-dialog-input" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="closeTextDialog(null)" data-i18n="cancel">Abbrechen</button>
+                <button class="primary-btn" onclick="closeTextDialog(document.getElementById('text-dialog-input').value)" data-i18n="ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="project-modal">
+        <div class="modal-card">
+            <h2 data-i18n="newProjectTitle">Neues Projekt</h2>
+            <div class="modal-row">
+                <label data-i18n="projectNameLabel">Projektname</label>
+                <input id="new-project-name" value="MeinProjekt" maxlength="60" oninput="this.dataset.userEdited='true'">
+            </div>
+            <div class="modal-row">
+                <label data-i18n="projectTypeLabel">Projekttyp</label>
+                <div class="type-choice">
+                    <button id="choice-web" class="active" onclick="chooseProjectType('web')">🌐 Web</button>
+                    <button id="choice-python" onclick="chooseProjectType('python')">🐍 Python</button>
+                </div>
+            </div>
+            <div class="modal-row">
+                <label data-i18n="templateLabel">Vorlage</label>
+                <select id="project-template">
+                    <option value="blank">Leeres Projekt</option>
+                    <option value="starter">Starter</option>
+                    <option value="game">JavaScript Spiel</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="closeProjectModal()" data-i18n="cancel">Abbrechen</button>
+                <button class="primary-btn" onclick="createProjectFromModal()" data-i18n="createProject">Projekt erstellen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="command-palette">
+        <div class="modal-card">
+            <div class="modal-header-row">
+                <h2 style="margin-bottom:0;">Command Palette</h2>
+                <button class="modal-close-btn" onclick="closeCommandPalette()" title="Schließen" data-i18n-title="close">✕</button>
+            </div>
+            <input id="command-input" placeholder="Befehl suchen..." autocomplete="off" data-i18n-placeholder="commandSearchPlaceholder">
+            <div id="command-list"></div>
+        </div>
+    </div>
+
+    <div id="search-modal">
+        <div class="modal-card">
+            <div class="modal-header-row">
+                <h2 style="margin-bottom:0;" data-i18n="searchReplaceTitle">Suchen & Ersetzen</h2>
+                <button class="modal-close-btn" onclick="closeSearchModal()" title="Schließen" data-i18n-title="close">✕</button>
+            </div>
+            <div class="search-grid">
+                <input id="search-term" placeholder="Suchen..." data-i18n-placeholder="searchPlaceholder">
+                <input id="replace-term" placeholder="Ersetzen durch..." data-i18n-placeholder="replacePlaceholder">
+            </div>
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="findInCurrentCode()" data-i18n="searchBtn">Suchen</button>
+                <button class="primary-btn" onclick="replaceInCurrentCode()" data-i18n="replaceAllBtn">Alle ersetzen</button>
+            </div>
+            <div id="search-results" class="search-result"></div>
+        </div>
+    </div>
+
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <h3>CodeForge</h3>
+        <button id="project-home-btn" class="colored-sidebar-btn home-btn" onclick="showHome()" data-i18n="homeSidebarBtn">⌂ Startseite</button>
+        
+        <!-- Typ-Filter Buttons -->
+        <div class="type-filter-bar">
+            <button class="filter-btn active" id="filter-btn-all" onclick="setProjectTypeFilter('all')" data-i18n="filterAll">Alle</button>
+            <button class="filter-btn" id="filter-btn-web" onclick="setProjectTypeFilter('web')">Web</button>
+            <button class="filter-btn" id="filter-btn-python" onclick="setProjectTypeFilter('python')">Python</button>
+        </div>
+
+        <input type="text" id="search-input" placeholder="Suchen..." onkeyup="filterProjects()" data-i18n-placeholder="searchPlaceholder">
+        <button class="colored-sidebar-btn new-project-btn" onclick="openProjectModal()" data-i18n="newProjectBtn">+ Neues Projekt</button>
+        <button class="colored-sidebar-btn rename-btn" onclick="renameCurrentProject()" data-i18n="renameBtn">✏️ Umbenennen</button>
+        <button class="colored-sidebar-btn delete-btn" onclick="deleteCurrentProject()" data-i18n="deleteBtn">🗑️ Löschen</button>
+        <button class="colored-sidebar-btn zip-btn" onclick="exportCurrentAsZip()" data-i18n="zipExportBtn">📦 ZIP Export</button>
+
+        <!-- Backup Buttons -->
+        <div class="backup-bar">
+            <button class="backup-btn" onclick="exportProjects()" title="Projekt(e) als JSON herunterladen" data-i18n="exportBtn" data-i18n-title="exportTitle">📥 Export</button>
+            <button class="backup-btn" onclick="document.getElementById('import-file-input').click()" title="Projekte aus JSON laden" data-i18n="importBtn" data-i18n-title="importTitle">📤 Import</button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importProjects(event)">
+        </div>
+
+        <ul id="project-list"></ul>
+<div class="project-files"><div class="project-files-title" data-i18n="filesLabel">DATEIEN</div><div id="file-tree"></div></div>
+    </div>
+
+    <!-- Main Area -->
+    <div id="main">
+        <div class="top-bar">
+            <div class="tabs">
+                <button class="icon-btn" onclick="toggleSidebar()" title="Sidebar ein/ausblenden" data-i18n-title="sidebarToggleTitle">☰</button>
+                <button id="btn-tab-web" class="tab-btn" data-i18n="webTabLabel">🌐 Web (HTML/CSS/JS)</button>
+                <button id="btn-tab-python" class="tab-btn" style="display:none;">🐍 Python</button>
+            </div>
+            
+            <div class="action-container">
+                <button class="action-btn" onclick="undoCode()" title="Rückgängig (Undo)" data-i18n-title="undoTitle">↩</button>
+                <button class="action-btn" onclick="redoCode()" title="Wiederherstellen (Redo)" data-i18n-title="redoTitle">↪</button>
+                <button class="action-btn" onclick="formatCurrentCode()" data-i18n="formatBtn">✨ Formatieren</button>
+<button class="action-btn" onclick="openSearchModal()" data-i18n="searchBtnToolbar">🔎 Suchen</button>
+<button class="action-btn" onclick="openCommandPalette()" data-i18n="commandBtn">⌘ Command</button>
+<button class="action-btn" onclick="toggleTheme()" data-i18n="themeBtn">🌓 Theme</button>
+<span id="save-status" data-i18n="savedStatus">✓ Gespeichert</span>
+            </div>
+        </div>
+
+        <!-- Web Editor Tab -->
+        <div id="web-tab" class="tab-content active">
+            <div id="mobile-file-tabs">
+                <button onclick="mobileSelectFile('html')" id="mobile-html">HTML</button>
+                <button onclick="mobileSelectFile('css')" id="mobile-css">CSS</button>
+                <button onclick="mobileSelectFile('js')" id="mobile-js">JS</button>
+            </div>
+            <div class="editors-column" id="editors-column">
+                <div class="restore-bar">
+                    <button class="restore-btn active-tab" id="btn-toggle-html" onclick="toggleBox('html-box')">HTML</button>
+                    <button class="restore-btn active-tab" id="btn-toggle-css" onclick="toggleBox('css-box')">CSS</button>
+                    <button class="restore-btn active-tab" id="btn-toggle-js" onclick="toggleBox('js-box')">JS</button>
+                    <button class="restore-btn active-tab" id="btn-toggle-console" onclick="toggleWebConsole()" data-i18n="consoleShort">Konsole</button>
+                </div>
+
+                <div class="editor-box" id="html-box">
+                    <div class="editor-header">
+                        <div class="editor-header-left">
+                            <span style="color: #e44d26;">HTML</span>
+                            <span style="font-size: 11px; color: #666;">index.html</span>
+                        </div>
+                        <div class="editor-header-right">
+                            <button class="copy-btn" onclick="copyEditorCode('html', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="toggle-btn" onclick="toggleBox('html-box')">✕</button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <textarea id="html-code"></textarea>
+                    </div>
+                </div>
+
+                <div class="row-divider" id="divider-html-css"></div>
+
+                <div class="editor-box" id="css-box">
+                    <div class="editor-header">
+                        <div class="editor-header-left">
+                            <span style="color: #264de4;">CSS</span>
+                            <span style="font-size: 11px; color: #666;">style.css</span>
+                        </div>
+                        <div class="editor-header-right">
+                            <button class="copy-btn" onclick="copyEditorCode('css', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="toggle-btn" onclick="toggleBox('css-box')">✕</button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <textarea id="css-code"></textarea>
+                    </div>
+                </div>
+
+                <div class="row-divider" id="divider-css-js"></div>
+
+                <div class="editor-box" id="js-box">
+                    <div class="editor-header">
+                        <div class="editor-header-left">
+                            <span style="color: #f7df1e;">JS</span>
+                            <span style="font-size: 11px; color: #666;">script.js</span>
+                        </div>
+                        <div class="editor-header-right">
+                            <button class="copy-btn" onclick="copyEditorCode('js', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="toggle-btn" onclick="toggleBox('js-box')">✕</button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <textarea id="js-code"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-divider" id="col-divider"></div>
+
+            <div class="preview-container" id="preview-container">
+                <div class="drag-overlay"></div>
+                <div class="preview-header">
+                    <span data-i18n="previewLabel">Preview / Live-Vorschau</span>
+                    <div class="preview-header-right">
+                        <button id="reset-web-btn" onclick="resetWebPreview()" title="Web-Code komplett neu starten" data-i18n="resetBtn" data-i18n-title="resetWebTitle">↻ Reset</button>
+                        <button class="icon-btn" onclick="togglePreviewFullscreen()" style="padding: 2px 8px;" data-i18n="fullscreenPreviewBtn">↔ Vollbild</button>
+                    </div>
+                </div>
+                <iframe id="preview-frame"></iframe>
+
+                <!-- JS Konsole für Web-Fehler / Logs -->
+                <div class="js-console-container">
+                    <div class="js-console-header">
+                        <span data-i18n="consoleErrorLabel">Console / Fehler-Ausgabe</span>
+                        <button id="clear-console-btn" class="restore-btn" onclick="clearWebConsole()" style="padding: 1px 6px;" data-i18n="clearBtn">Löschen</button>
+                    <button id="close-web-console" class="icon-btn" onclick="toggleWebConsole()" title="Konsole ausblenden" data-i18n-title="hideConsoleTitle">✕</button></div>
+                    <div id="js-console-output"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Python Tab -->
+        <div id="python-tab" class="tab-content">
+            <div class="py-toolbar">
+                <span class="py-title">main.py</span>
+                <div class="editor-header-right">
+                    <button class="copy-btn" onclick="copyEditorCode('py', this)" title="Code kopieren" data-i18n="copy" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                    <button id="run-py-btn" onclick="runPython()" title="Code ausführen" data-i18n="run" data-i18n-title="runTitle">▶ Code Ausführen</button>
+                    <button id="reset-py-btn" onclick="resetPython()" title="Python komplett zurücksetzen" data-i18n="resetBtn" data-i18n-title="resetPyTitle">↻ Reset</button>
+                </div>
+            </div>
+            
+            <div class="py-editor-wrapper">
+                <textarea id="py-code" placeholder="# Schreib deinen Python-Code hier hin&#10;name = input('Wie heißt du? ')\nprint(f'Hallo {name}!')" data-i18n-placeholder="placeholder"></textarea>
+            </div>
+            
+            <div class="py-console-title" data-i18n="consoleLabel">Ausgabe / Konsole:</div>
+            <div class="python-terminal" id="python-terminal" onclick="focusPythonInput()">
+                <div id="python-output" data-state="starting">Starte Python Engine...</div>
+                <div id="python-input-row" class="hidden">
+                    <span id="python-input-prompt"></span>
+                    <input id="python-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Python Eingabe" data-i18n-aria="inputAria">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide = null;
+        let currentProjectKey = null;
+        let selectedTypeFilter = "all";
+        let autoSaveTimeout = null;
+        let lastFocusedEditor = null;
+
+        let cmEditors = {};
+
+        const dbName = "CodePenLocalDB";
+        const storeName = "projects";
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName);
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function dbGet(key) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(storeName, "readonly");
+                    const store = tx.objectStore(storeName);
+                    const req = store.get(key);
+                    req.onsuccess = () => {
+                        if (req.result !== undefined) {
+                            resolve(req.result);
+                        } else {
+                            const lsData = localStorage.getItem(key);
+                            resolve(lsData ? JSON.parse(lsData) : null);
+                        }
+                    };
+                    req.onerror = () => resolve(null);
+                });
+            } catch(e) {
+                const lsData = localStorage.getItem(key);
+                return lsData ? JSON.parse(lsData) : null;
+            }
+        }
+
+        async function dbSet(key, value) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(storeName, "readwrite");
+                    const store = tx.objectStore(storeName);
+                    store.put(value, key);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => reject();
+                });
+            } catch(e) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                } catch(err) {
+                    console.error("Speicherplatz voll oder nicht verfügbar.");
+                }
+            }
+        }
+
+        async function dbDelete(key) {
+            localStorage.removeItem(key);
+            try {
+                const db = await openDB();
+                const tx = db.transaction(storeName, "readwrite");
+                tx.objectStore(storeName).delete(key);
+            } catch(e) {}
+        }
+
+        async function dbGetAllKeys() {
+            const keysSet = new Set();
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k.startsWith("codepen_")) keysSet.add(k);
+            }
+            try {
+                const db = await openDB();
+                const tx = db.transaction(storeName, "readonly");
+                const store = tx.objectStore(storeName);
+                const req = store.getAllKeys();
+                await new Promise((resolve) => {
+                    req.onsuccess = () => {
+                        req.result.forEach(k => { if (k.startsWith("codepen_")) keysSet.add(k); });
+                        resolve();
+                    };
+                    req.onerror = () => resolve();
+                });
+            } catch(e) {}
+            return Array.from(keysSet);
+        }
+
+        function initCodeMirror() {
+            const cmOptions = {
+                theme: "dracula",
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                tabSize: 2,
+                indentUnit: 2,
+                lineWrapping: true,
+                extraKeys: {
+                    "Tab": function(cm) {
+                        if (cm.somethingSelected()) {
+                            cm.indentSelection("add");
+                        } else {
+                            cm.replaceSelection("  ", "end");
+                        }
+                    }
+                }
+            };
+
+            cmEditors.html = CodeMirror.fromTextArea(document.getElementById("html-code"), { ...cmOptions, mode: "htmlmixed" });
+            cmEditors.css = CodeMirror.fromTextArea(document.getElementById("css-code"), { ...cmOptions, mode: "css" });
+            cmEditors.js = CodeMirror.fromTextArea(document.getElementById("js-code"), { ...cmOptions, mode: "javascript" });
+            cmEditors.py = CodeMirror.fromTextArea(document.getElementById("py-code"), { ...cmOptions, mode: "python" });
+
+            const trackFocus = (cm) => lastFocusedEditor = cm;
+            ['html', 'css', 'js', 'py'].forEach(key => {
+                cmEditors[key].on("focus", () => trackFocus(cmEditors[key]));
+            });
+
+            cmEditors.html.on("change", () => { updateWebPreview(); triggerAutoSave(); });
+            cmEditors.css.on("change", () => { updateWebPreview(); triggerAutoSave(); });
+            cmEditors.js.on("change", () => { updateWebPreview(); triggerAutoSave(); });
+            cmEditors.py.on("change", () => { triggerAutoSave(); });
+        }
+
+        function getActiveEditor() {
+            if (lastFocusedEditor && lastFocusedEditor.getWrapperElement().offsetHeight > 0) {
+                return lastFocusedEditor;
+            }
+            return document.getElementById('python-tab').classList.contains('active') ? cmEditors.py : cmEditors.html;
+        }
+
+        function undoCode() {
+            const cm = getActiveEditor();
+            if (cm) {
+                cm.undo();
+                // CodeMirror zeichnet Änderungen manchmal nicht sofort neu,
+                // wenn der Editor gerade nicht fokussiert ist (genau das
+                // Python-Problem: Undo/Redo "verschwindet" bis man wieder
+                // reinklickt/scrollt). refresh() erzwingt das Neuzeichnen sofort.
+                cm.refresh();
+                cm.focus();
+                triggerAutoSave();
+            }
+        }
+
+        function redoCode() {
+            const cm = getActiveEditor();
+            if (cm) {
+                cm.redo();
+                cm.refresh();
+                cm.focus();
+                triggerAutoSave();
+            }
+        }
+
+        // =========================================================
+        // PYTHON TERMINAL: Direkte Eingabe im schwarzen Output-Fenster
+        // =========================================================
+        let pythonInputResolver = null;
+        let pythonRunning = false;
+        let pyNamespace = null; // frischer globaler Namespace pro Lauf -> echter Reset
+
+        function appendPythonOutput(text) {
+            const outputDiv = document.getElementById("python-output");
+            outputDiv.textContent += text;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function scrollPythonTerminalToBottom() {
+            const outputDiv = document.getElementById("python-output");
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function showPythonInput() {
+            const row = document.getElementById("python-input-row");
+            const input = document.getElementById("python-input");
+
+            row.classList.remove("hidden");
+            input.disabled = false;
+            input.value = "";
+
+            setTimeout(() => {
+                input.focus();
+                scrollPythonTerminalToBottom();
+            }, 0);
+        }
+
+        function hidePythonInput() {
+            const row = document.getElementById("python-input-row");
+            const input = document.getElementById("python-input");
+
+            input.disabled = true;
+            input.value = "";
+            row.classList.add("hidden");
+        }
+
+        function focusPythonInput() {
+            if (pythonInputResolver) {
+                document.getElementById("python-input").focus();
+            }
+        }
+
+        // Diese Funktion wird von Python aufgerufen und wartet asynchron
+        // auf eine Zeile, die der Benutzer direkt im Terminal eingibt.
+        window.waitForPythonInput = function() {
+            return new Promise((resolve) => {
+                pythonInputResolver = resolve;
+                showPythonInput();
+            });
+        };
+
+        function submitPythonInput() {
+            if (!pythonInputResolver) return;
+
+            const input = document.getElementById("python-input");
+            const value = input.value;
+
+            // Die Eingabe wird wie in einem echten Terminal in der Ausgabe angezeigt.
+            appendPythonOutput(value + "\n");
+
+            const resolve = pythonInputResolver;
+            pythonInputResolver = null;
+            hidePythonInput();
+            resolve(value);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const input = document.getElementById("python-input");
+
+            input.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" && pythonInputResolver) {
+                    event.preventDefault();
+                    submitPythonInput();
+                }
+            });
+
+            applyAppTranslations();
+        });
+
+        // =========================================================
+        // App-weite Übersetzung Deutsch/Englisch. Automatisch per
+        // Browsersprache erkannt (navigator.language), manuell
+        // umschaltbar über den Sprach-Button auf der Startseite.
+        // Die Wahl wird in localStorage gemerkt.
+        // =========================================================
+        const appI18n = {
+            de: {
+                backBtnTitle: "Zur vorherigen Ansicht",
+                homeSubtitle: "Deine lokale Web- und Python-Entwicklungsumgebung.",
+                homeWebTitle: "🌐 Web-Projekt",
+                homeWebDesc: "HTML, CSS und JavaScript mit Live-Vorschau und Konsole.",
+                homePyTitle: "🐍 Python-Projekt",
+                homePyDesc: "Python direkt im Browser mit interaktivem Terminal.",
+                homeRecent: "Zuletzt geöffnet",
+                noRecentProjects: "Noch keine Projekte geöffnet.",
+                langToggleTitle: "Sprache wechseln (Deutsch/Englisch)",
+
+                confirmTitleDefault: "Bestätigen",
+                cancel: "Abbrechen",
+                confirm: "Bestätigen",
+                inputTitleDefault: "Eingabe",
+                pleaseEnter: "Bitte eingeben",
+                ok: "OK",
+
+                newProjectTitle: "Neues Projekt",
+                projectNameLabel: "Projektname",
+                defaultProjectName: "MeinProjekt",
+                projectTypeLabel: "Projekttyp",
+                templateLabel: "Vorlage",
+                createProject: "Projekt erstellen",
+                optBlank: "Leeres Projekt",
+                optStarter: "Starter",
+                optWebStarter: "Web Starter",
+                optPyStarter: "Python Starter",
+                optTerminalStarter: "Terminal Starter",
+                optJsGame: "JavaScript Spiel",
+                optLandingPage: "Landing Page",
+
+                commandSearchPlaceholder: "Befehl suchen...",
+                searchReplaceTitle: "Suchen & Ersetzen",
+                searchPlaceholder: "Suchen...",
+                replacePlaceholder: "Ersetzen durch...",
+                close: "Schließen",
+                searchBtn: "Suchen",
+                replaceAllBtn: "Alle ersetzen",
+
+                homeSidebarBtn: "⌂ Startseite",
+                filterAll: "Alle",
+                newProjectBtn: "+ Neues Projekt",
+                saveBtn: "💾 Speichern",
+                renameBtn: "✏️ Umbenennen",
+                deleteBtn: "🗑️ Löschen",
+                zipExportBtn: "📦 ZIP Export",
+                exportTitle: "Projekt(e) als JSON herunterladen",
+                exportBtn: "📥 Export",
+                importTitle: "Projekte aus JSON laden",
+                importBtn: "📤 Import",
+                filesLabel: "DATEIEN",
+
+                sidebarToggleTitle: "Sidebar ein/ausblenden",
+                webTabLabel: "🌐 Web (HTML/CSS/JS)",
+                undoTitle: "Rückgängig (Undo)",
+                redoTitle: "Wiederherstellen (Redo)",
+                formatBtn: "✨ Formatieren",
+                searchBtnToolbar: "🔎 Suchen",
+                commandBtn: "⌘ Command",
+                themeBtn: "🌓 Theme",
+                editorFullscreenBtn: "⛶ Editor",
+                savedStatus: "✓ Gespeichert",
+                savingStatus: "● Speichert...",
+
+                consoleShort: "Konsole",
+                copyCodeTitle: "Code kopieren",
+                copyBtn: "📋 Kopieren",
+                previewLabel: "Preview / Live-Vorschau",
+                resetWebTitle: "Web-Code komplett neu starten",
+                resetBtn: "↻ Reset",
+                fullscreenPreviewBtn: "↔ Vollbild",
+                consoleErrorLabel: "Console / Fehler-Ausgabe",
+                clearBtn: "Löschen",
+                hideConsoleTitle: "Konsole ausblenden",
+                projectStarted: "Projekt gestartet",
+
+                copy: "📋 Kopieren",
+                run: "▶ Code Ausführen",
+                runTitle: "Code ausführen",
+                resetPyTitle: "Python komplett zurücksetzen",
+                pySearchTitle: "Suchen & Ersetzen",
+                pyFullscreenTitle: "Vollbild",
+                consoleLabel: "Ausgabe / Konsole:",
+                placeholder: "# Schreib deinen Python-Code hier hin\nname = input('Wie heißt du? ')\nprint(f'Hallo {name}!')",
+                starting: "Starte Python Engine...",
+                ready: "Python Umgebung bereit!",
+                loadError: "Fehler beim Laden von Python: ",
+                resetDone: "Python wurde zurückgesetzt. Bereit für einen neuen Start.",
+                stillLoading: "Python wird noch geladen, bitte warten...",
+                inputAria: "Python Eingabe",
+
+                copyFailed: "Kopieren fehlgeschlagen. Bitte den Code manuell markieren und kopieren.",
+                selectProjectFirst: "Bitte wähle zuerst ein Projekt aus!",
+                projectSaved: "Projekt gespeichert!",
+                nameExists: "Ein Projekt mit diesem Namen existiert bereits!",
+                nameExists2: "Ein Projekt mit diesem Namen existiert bereits.",
+                noProjectsToExport: "Keine Projekte zum Exportieren vorhanden.",
+                noProjectSelected: "Kein Projekt ausgewählt!",
+                invalidInput: "Ungültige Eingabe.",
+                importSuccess: (count) => `${count} Projekte erfolgreich importiert!`,
+                importError: "Fehler beim Lesen der Datei. Bitte stelle sicher, dass es eine gültige JSON-Datei ist.",
+                enterProjectName: "Bitte einen Projektnamen eingeben.",
+                selectProjectFirst2: "Bitte zuerst ein Projekt auswählen.",
+                zipModuleError: "ZIP-Modul konnte nicht geladen werden.",
+                renameProjectTitle: "Projekt umbenennen",
+                renameProjectLabel: "Neuen Namen eingeben",
+                deleteProjectTitle: "Projekt löschen",
+                deleteProjectMsg: (name) => `Möchtest du das Projekt "${name}" wirklich löschen?`,
+                exportProjectsTitle: "Projekte exportieren",
+                exportProjectsLabel: "1 = aktuelles Projekt   •   2 = alle Projekte (Backup)",
+                pythonErrorPrefix: "Python Fehler:\n",
+                matchesFound: (n) => `${n} Treffer gefunden.`,
+                matchesReplaced: (n) => `${n} Treffer ersetzt.`,
+                jumpToLineTitle: (line) => `Zu Zeile ${line} springen`,
+
+                cmdNewWeb: "Neues Web-Projekt",
+                cmdNewPy: "Neues Python-Projekt",
+                cmdSave: "Speichern",
+                cmdFormat: "Formatieren",
+                cmdSearch: "Suchen & Ersetzen",
+                cmdTheme: "Theme wechseln",
+                cmdFullscreen: "Editor Vollbild",
+                cmdZip: "ZIP exportieren",
+                cmdHome: "Startseite"
+            },
+            en: {
+                backBtnTitle: "Back to previous view",
+                homeSubtitle: "Your local web and Python development environment.",
+                homeWebTitle: "🌐 Web Project",
+                homeWebDesc: "HTML, CSS and JavaScript with live preview and console.",
+                homePyTitle: "🐍 Python Project",
+                homePyDesc: "Python directly in the browser with an interactive terminal.",
+                homeRecent: "Recently opened",
+                noRecentProjects: "No projects opened yet.",
+                langToggleTitle: "Switch language (German/English)",
+
+                confirmTitleDefault: "Confirm",
+                cancel: "Cancel",
+                confirm: "Confirm",
+                inputTitleDefault: "Input",
+                pleaseEnter: "Please enter",
+                ok: "OK",
+
+                newProjectTitle: "New Project",
+                projectNameLabel: "Project name",
+                defaultProjectName: "MyProject",
+                projectTypeLabel: "Project type",
+                templateLabel: "Template",
+                createProject: "Create project",
+                optBlank: "Empty project",
+                optStarter: "Starter",
+                optWebStarter: "Web starter",
+                optPyStarter: "Python starter",
+                optTerminalStarter: "Terminal starter",
+                optJsGame: "JavaScript game",
+                optLandingPage: "Landing page",
+
+                commandSearchPlaceholder: "Search command...",
+                searchReplaceTitle: "Find & Replace",
+                searchPlaceholder: "Search...",
+                replacePlaceholder: "Replace with...",
+                close: "Close",
+                searchBtn: "Search",
+                replaceAllBtn: "Replace all",
+
+                homeSidebarBtn: "⌂ Home",
+                filterAll: "All",
+                newProjectBtn: "+ New Project",
+                saveBtn: "💾 Save",
+                renameBtn: "✏️ Rename",
+                deleteBtn: "🗑️ Delete",
+                zipExportBtn: "📦 ZIP Export",
+                exportTitle: "Download project(s) as JSON",
+                exportBtn: "📥 Export",
+                importTitle: "Load projects from JSON",
+                importBtn: "📤 Import",
+                filesLabel: "FILES",
+
+                sidebarToggleTitle: "Show/hide sidebar",
+                webTabLabel: "🌐 Web (HTML/CSS/JS)",
+                undoTitle: "Undo",
+                redoTitle: "Redo",
+                formatBtn: "✨ Format",
+                searchBtnToolbar: "🔎 Search",
+                commandBtn: "⌘ Command",
+                themeBtn: "🌓 Theme",
+                editorFullscreenBtn: "⛶ Editor",
+                savedStatus: "✓ Saved",
+                savingStatus: "● Saving...",
+
+                consoleShort: "Console",
+                copyCodeTitle: "Copy code",
+                copyBtn: "📋 Copy",
+                previewLabel: "Preview / Live Preview",
+                resetWebTitle: "Completely restart web code",
+                resetBtn: "↻ Reset",
+                fullscreenPreviewBtn: "↔ Fullscreen",
+                consoleErrorLabel: "Console / Errors",
+                clearBtn: "Clear",
+                hideConsoleTitle: "Hide console",
+                projectStarted: "Project started",
+
+                copy: "📋 Copy",
+                run: "▶ Run Code",
+                runTitle: "Run code",
+                resetPyTitle: "Fully reset Python",
+                pySearchTitle: "Find & Replace",
+                pyFullscreenTitle: "Fullscreen",
+                consoleLabel: "Output / Console:",
+                placeholder: "# Write your Python code here\nname = input('What is your name? ')\nprint(f'Hello {name}!')",
+                starting: "Starting Python engine...",
+                ready: "Python environment ready!",
+                loadError: "Error loading Python: ",
+                resetDone: "Python has been reset. Ready for a new start.",
+                stillLoading: "Python is still loading, please wait...",
+                inputAria: "Python input",
+
+                copyFailed: "Copy failed. Please select and copy the code manually.",
+                selectProjectFirst: "Please select a project first!",
+                projectSaved: "Project saved!",
+                nameExists: "A project with this name already exists!",
+                nameExists2: "A project with this name already exists.",
+                noProjectsToExport: "No projects available to export.",
+                noProjectSelected: "No project selected!",
+                invalidInput: "Invalid input.",
+                importSuccess: (count) => `${count} projects imported successfully!`,
+                importError: "Error reading the file. Please make sure it is a valid JSON file.",
+                enterProjectName: "Please enter a project name.",
+                selectProjectFirst2: "Please select a project first.",
+                zipModuleError: "Could not load ZIP module.",
+                renameProjectTitle: "Rename project",
+                renameProjectLabel: "Enter new name",
+                deleteProjectTitle: "Delete project",
+                deleteProjectMsg: (name) => `Do you really want to delete the project "${name}"?`,
+                exportProjectsTitle: "Export projects",
+                exportProjectsLabel: "1 = current project   •   2 = all projects (backup)",
+                pythonErrorPrefix: "Python error:\n",
+                matchesFound: (n) => `${n} matches found.`,
+                matchesReplaced: (n) => `${n} matches replaced.`,
+                jumpToLineTitle: (line) => `Jump to line ${line}`,
+
+                cmdNewWeb: "New web project",
+                cmdNewPy: "New Python project",
+                cmdSave: "Save",
+                cmdFormat: "Format",
+                cmdSearch: "Find & Replace",
+                cmdTheme: "Toggle theme",
+                cmdFullscreen: "Editor fullscreen",
+                cmdZip: "Export ZIP",
+                cmdHome: "Home"
+            }
+        };
+
+        function getInitialAppLang() {
+            const saved = localStorage.getItem("appLang");
+            if (saved === "de" || saved === "en") return saved;
+            const nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+            return nav.startsWith("de") ? "de" : "en";
+        }
+
+        let currentAppLang = getInitialAppLang();
+
+        function t(key, ...args) {
+            const entry = (appI18n[currentAppLang] && appI18n[currentAppLang][key]) ?? appI18n.en[key] ?? key;
+            return typeof entry === "function" ? entry(...args) : entry;
+        }
+
+        function applyAppTranslations() {
+            document.documentElement.lang = currentAppLang;
+
+            // Elemente mit data-i18n / data-i18n-title / data-i18n-placeholder
+            // werden generisch anhand ihres Übersetzungs-Keys befüllt.
+            document.querySelectorAll("[data-i18n]").forEach(el => {
+                el.textContent = t(el.getAttribute("data-i18n"));
+            });
+            document.querySelectorAll("[data-i18n-title]").forEach(el => {
+                el.title = t(el.getAttribute("data-i18n-title"));
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+                el.setAttribute("placeholder", t(el.getAttribute("data-i18n-placeholder")));
+            });
+            document.querySelectorAll("[data-i18n-aria]").forEach(el => {
+                el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
+            });
+
+            // Default-Projektname im "Neues Projekt"-Feld nur anpassen,
+            // solange der Nutzer ihn noch nicht selbst geändert hat.
+            const nameInput = document.getElementById("new-project-name");
+            if (nameInput && (nameInput.dataset.userEdited !== "true")) {
+                nameInput.value = t("defaultProjectName");
+            }
+
+            // Vorlagen-Auswahl im "Neues Projekt"-Modal neu aufbauen (Labels
+            // sind sprachabhängig).
+            if (typeof chooseProjectType === "function" && document.getElementById("project-template")) {
+                chooseProjectType(projectTypeForModal);
+            }
+
+            // Sprach-Button auf der Startseite.
+            const langBtn = document.getElementById("app-lang-toggle");
+            if (langBtn) {
+                langBtn.textContent = currentAppLang === "de" ? "🇩🇪 Deutsch" : "🇬🇧 English";
+                langBtn.title = t("langToggleTitle");
+            }
+
+            // Terminal-Status: nur nachziehen, solange noch kein echter
+            // Lauf/Fehler/Reset stattgefunden hat (reiner Startzustand).
+            const out = document.getElementById("python-output");
+            if (out && out.dataset.state === "starting") {
+                out.textContent = t("starting");
+            } else if (out && out.dataset.state === "ready") {
+                out.textContent = t("ready");
+            }
+
+            // Command Palette neu rendern, falls gerade offen bzw. beim
+            // nächsten Öffnen mit den richtigen Labels.
+            if (typeof renderCommands === "function" && document.getElementById("command-input")) {
+                renderCommands(document.getElementById("command-input").value || "");
+            }
+
+            const recentTitle = document.getElementById("home-recent-title");
+            if (recentTitle) recentTitle.textContent = t("homeRecent");
+            if (typeof renderRecentProjects === "function") renderRecentProjects();
+        }
+
+        function toggleAppLang() {
+            currentAppLang = currentAppLang === "de" ? "en" : "de";
+            localStorage.setItem("appLang", currentAppLang);
+            applyAppTranslations();
+        }
+
+        async function initPyodide() {
+            try {
+                pyodide = await loadPyodide();
+                const out = document.getElementById("python-output");
+                out.dataset.state = "ready";
+                out.textContent = t("ready");
+            } catch (err) {
+                const out = document.getElementById("python-output");
+                out.dataset.state = "error";
+                out.textContent = t("loadError") + err;
+            }
+        }
+
+        async function resetPython() {
+            clearPythonRuntimeState();
+            const out = document.getElementById("python-output");
+            out.dataset.state = "reset";
+            out.textContent = t("resetDone");
+        }
+
+        // Setzt den kompletten Python-Laufzeitzustand zurück (Namespace,
+        // laufende input()-Abfrage, "läuft gerade"-Flag) - OHNE das
+        // Terminal-Textfeld zu beschreiben. Wird von resetPython() (zeigt
+        // danach "zurückgesetzt") UND beim Öffnen/Wechseln eines Projekts
+        // verwendet (zeigt danach "bereit"), damit niemals der Zustand
+        // (oder eine noch offene Eingabeaufforderung) eines ANDEREN
+        // Projekts in ein frisch geöffnetes Projekt durchsickert.
+        function clearPythonRuntimeState() {
+            pythonInputResolver = null;
+            hidePythonInput();
+            if (pyNamespace) {
+                try { pyNamespace.destroy(); } catch (e) {}
+                pyNamespace = null;
+            }
+            pythonRunning = false;
+        }
+
+
+        async function runPython() {
+            const outputDiv = document.getElementById("python-output");
+
+            if (!pyodide) {
+                outputDiv.textContent = t("stillLoading");
+                return;
+            }
+
+            if (pythonRunning) return;
+
+            pythonRunning = true;
+            pythonInputResolver = null;
+            hidePythonInput();
+            outputDiv.dataset.state = "running";
+            outputDiv.textContent = "";
+
+            // Für jeden Lauf einen komplett frischen globalen Namespace
+            // anlegen. Ohne das würden Variablen, Funktionen, Klassen
+            // und Objekte aus dem vorherigen Lauf im Interpreter erhalten
+            // bleiben - der Button hat also nicht wirklich "resettet",
+            // sondern nur weitergemacht. Der alte Namespace wird vorher
+            // sauber freigegeben (destroy), um kein Speicherleck zu erzeugen.
+            if (pyNamespace) {
+                try { pyNamespace.destroy(); } catch (e) {}
+                pyNamespace = null;
+            }
+            pyNamespace = pyodide.globals.get("dict")();
+
+            // raw sorgt dafür, dass input("> ") ohne Zeilenumbruch sofort
+            // direkt im Terminal sichtbar wird. Pyodide liefert dabei
+            // einzelne Bytes (nicht Zeichen) - ein Sonderzeichen wie "ß"
+            // besteht in UTF-8 aus 2 Bytes. Ein TextDecoder mit
+            // stream:true puffert unvollständige Mehrbyte-Sequenzen und
+            // setzt sie erst zu einem Zeichen zusammen, sobald alle
+            // Bytes da sind - sonst würde z.B. "ß" als "Ã" +
+            // Sonderzeichen angezeigt.
+            const stdoutDecoder = new TextDecoder("utf-8");
+            const stderrDecoder = new TextDecoder("utf-8");
+
+            pyodide.setStdout({
+                raw: (charCode) => {
+                    const chunk = stdoutDecoder.decode(new Uint8Array([charCode]), { stream: true });
+                    if (chunk) appendPythonOutput(chunk);
+                }
+            });
+
+            pyodide.setStderr({
+                raw: (charCode) => {
+                    const chunk = stderrDecoder.decode(new Uint8Array([charCode]), { stream: true });
+                    if (chunk) appendPythonOutput(chunk);
+                }
+            });
+
+            try {
+                const code = cmEditors.py.getValue();
+
+                // Normales Python input() wird umgeleitet, damit es direkt
+                // auf die Eingabezeile im schwarzen Terminal wartet.
+                const terminalPrelude = `
+import builtins
+from pyodide.ffi import run_sync
+from js import window
+
+def __browser_terminal_input(prompt=""):
+    if prompt:
+        print(prompt, end="", flush=True)
+    return run_sync(window.waitForPythonInput())
+
+builtins.input = __browser_terminal_input
+`;
+
+                let result = await pyodide.runPythonAsync(terminalPrelude + "\n" + code, { globals: pyNamespace });
+
+                if (result !== undefined && outputDiv.textContent === "") {
+                    appendPythonOutput(String(result));
+                }
+            } catch (err) {
+                appendPythonOutput(t("pythonErrorPrefix") + err + "\n");
+            } finally {
+                pythonRunning = false;
+                pythonInputResolver = null;
+                hidePythonInput();
+            }
+        }
+
+
+        // =========================================================
+        // CODE KOPIEREN (HTML / CSS / JS / Python)
+        // =========================================================
+        function copyEditorCode(editorKey, btnEl) {
+            const cm = cmEditors[editorKey];
+            if (!cm) return;
+            const text = cm.getValue();
+
+            const showCopied = () => {
+                if (!btnEl) return;
+                const original = btnEl.dataset.originalText || btnEl.innerHTML;
+                btnEl.dataset.originalText = original;
+                btnEl.innerHTML = "✓ Kopiert!";
+                btnEl.classList.add("copied");
+                clearTimeout(btnEl._copyResetTimeout);
+                btnEl._copyResetTimeout = setTimeout(() => {
+                    btnEl.innerHTML = original;
+                    btnEl.classList.remove("copied");
+                }, 1200);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(showCopied).catch(() => fallbackCopy(text, showCopied));
+            } else {
+                fallbackCopy(text, showCopied);
+            }
+        }
+
+        function fallbackCopy(text, onSuccess) {
+            try {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.style.position = "fixed";
+                ta.style.top = "-9999px";
+                ta.style.left = "-9999px";
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                if (onSuccess) onSuccess();
+            } catch (e) {
+                alert(t("copyFailed"));
+            }
+        }
+
+        // =========================================================
+        // WEB-VORSCHAU: Reset startet die Preview komplett neu
+        // Baut das iframe komplett neu auf (statt nur srcdoc zu
+        // überschreiben), damit z.B. Spiele/Skripte im iframe
+        // wirklich sauber neu starten - ohne die ganze Webseite
+        // neu laden zu müssen.
+        // =========================================================
+        function runWebPreview() {
+            // Nur den aktuellen Code ausführen/aktualisieren.
+            updateWebPreview();
+        }
+
+        function resetWebPreview() {
+            // Vorschau wirklich zerstören und anschließend komplett neu starten.
+            const iframe = document.getElementById("preview-frame");
+            if (!iframe) return;
+
+            clearWebConsole();
+            iframe.srcdoc = "";
+            iframe.src = "about:blank";
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updateWebPreview();
+                    appendConsoleEntry("success", t("projectStarted"));
+                });
+            });
+        }
+
+        function clearWebConsole() {
+            const output = document.getElementById("js-console-output");
+            if (output) output.innerHTML = "";
+        }
+
+        // Anzahl der Dokumentzeilen, die im iframe VOR dem eigentlichen
+        // JS-Code stehen. Wird gebraucht, um bei einem Laufzeitfehler die
+        // passende Zeile im JS-Editor zu finden (siehe updateWebPreview /
+        // jumpToJsLine).
+        let jsLineOffset = 0;
+
+        window.addEventListener("message", function(event) {
+            const iframe = document.getElementById("preview-frame");
+            if (event.source !== iframe.contentWindow) return;
+
+            if (event.data && event.data.type === "console") {
+                const logType = event.data.logType === "log" ? "info" : event.data.logType;
+                let location = "";
+                let jumpLine = null;
+
+                if (event.data.line) {
+                    const userLine = event.data.line - jsLineOffset;
+                    if (userLine >= 1) {
+                        jumpLine = userLine;
+                        location = "script.js:" + userLine;
+                    }
+                }
+
+                appendConsoleEntry(logType, event.data.message, location, jumpLine);
+            }
+        });
+
+        // Springt im JS-Editor zur angegebenen Zeile (z.B. per Klick auf
+        // einen Fehler in der Konsole) und hebt sie kurz hervor.
+        function jumpToJsLine(line) {
+            if (!cmEditors.js) return;
+
+            const jsBox = document.getElementById("js-box");
+            if (jsBox && jsBox.classList.contains("collapsed")) {
+                toggleBox("js-box");
+            }
+
+            const lineIndex = Math.max(0, line - 1);
+            setTimeout(() => {
+                cmEditors.js.refresh();
+                cmEditors.js.setCursor({ line: lineIndex, ch: 0 });
+                cmEditors.js.scrollIntoView({ line: lineIndex, ch: 0 }, 100);
+                cmEditors.js.focus();
+
+                const handle = cmEditors.js.addLineClass(lineIndex, "background", "js-error-line-highlight");
+                setTimeout(() => {
+                    cmEditors.js.removeLineClass(lineIndex, "background", "js-error-line-highlight");
+                }, 1600);
+            }, 60);
+        }
+
+        async function formatCurrentCode() {
+            if (!currentProjectKey) return;
+            const data = await dbGet(currentProjectKey) || {};
+            const isPython = (data.type === "python");
+
+            if (isPython) {
+                const val = cmEditors.py.getValue();
+                const formatted = val.split('\n').map(line => line.trimEnd()).join('\n').trim();
+                cmEditors.py.setValue(formatted);
+            } else {
+                if (window.html_beautify && cmEditors.html.getValue()) {
+                    cmEditors.html.setValue(html_beautify(cmEditors.html.getValue(), { indent_size: 2 }));
+                }
+                if (window.css_beautify && cmEditors.css.getValue()) {
+                    cmEditors.css.setValue(css_beautify(cmEditors.css.getValue(), { indent_size: 2 }));
+                }
+                if (window.js_beautify && cmEditors.js.getValue()) {
+                    cmEditors.js.setValue(js_beautify(cmEditors.js.getValue(), { indent_size: 2 }));
+                }
+            }
+            triggerAutoSave();
+        }
+
+        const colDivider = document.getElementById('col-divider');
+        const editorsColumn = document.getElementById('editors-column');
+        const webTab = document.getElementById('web-tab');
+
+        colDivider.addEventListener('pointerdown', (e) => {
+            colDivider.setPointerCapture(e.pointerId);
+            colDivider.classList.add('dragging');
+            document.body.classList.add('dragging-active');
+            document.body.style.cursor = 'col-resize';
+        });
+
+        colDivider.addEventListener('pointermove', (e) => {
+            if (!colDivider.hasPointerCapture(e.pointerId)) return;
+            const rect = webTab.getBoundingClientRect();
+            let newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+            if (newWidth >= 10 && newWidth <= 90) {
+                editorsColumn.style.width = `${newWidth}%`;
+                refreshCodeMirrorEditors();
+            }
+        });
+
+        const stopColDragging = (e) => {
+            if (colDivider.hasPointerCapture(e.pointerId)) {
+                colDivider.releasePointerCapture(e.pointerId);
+            }
+            colDivider.classList.remove('dragging');
+            document.body.classList.remove('dragging-active');
+            document.body.style.cursor = 'default';
+            refreshCodeMirrorEditors();
+        };
+
+        colDivider.addEventListener('pointerup', stopColDragging);
+        colDivider.addEventListener('pointercancel', stopColDragging);
+
+        function initRowDivider(dividerId, topBoxId, bottomBoxId) {
+            const divider = document.getElementById(dividerId);
+            const topBox = document.getElementById(topBoxId);
+            const bottomBox = document.getElementById(bottomBoxId);
+
+            divider.addEventListener('pointerdown', (e) => {
+                divider.setPointerCapture(e.pointerId);
+                divider.classList.add('dragging');
+                document.body.classList.add('dragging-active');
+                document.body.style.cursor = 'row-resize';
+            });
+
+            divider.addEventListener('pointermove', (e) => {
+                if (!divider.hasPointerCapture(e.pointerId)) return;
+                
+                const topRect = topBox.getBoundingClientRect();
+                const bottomRect = bottomBox.getBoundingClientRect();
+                const totalFlex = parseFloat(topBox.style.flexGrow || 1) + parseFloat(bottomBox.style.flexGrow || 1);
+                const totalPixel = topRect.height + bottomRect.height;
+                const newTopPixel = e.clientY - topRect.top;
+
+                if (newTopPixel > 40 && (totalPixel - newTopPixel) > 40) {
+                    const topRatio = newTopPixel / totalPixel;
+                    topBox.style.flex = (totalFlex * topRatio);
+                    bottomBox.style.flex = (totalFlex * (1 - topRatio));
+                    refreshCodeMirrorEditors();
+                }
+            });
+
+            const stopRowDragging = (e) => {
+                if (divider.hasPointerCapture(e.pointerId)) {
+                    divider.releasePointerCapture(e.pointerId);
+                }
+                divider.classList.remove('dragging');
+                document.body.classList.remove('dragging-active');
+                document.body.style.cursor = 'default';
+                refreshCodeMirrorEditors();
+            };
+
+            divider.addEventListener('pointerup', stopRowDragging);
+            divider.addEventListener('pointercancel', stopRowDragging);
+        }
+
+        initRowDivider('divider-html-css', 'html-box', 'css-box');
+        initRowDivider('divider-css-js', 'css-box', 'js-box');
+
+        function refreshCodeMirrorEditors() {
+            setTimeout(() => {
+                Object.values(cmEditors).forEach(editor => editor && editor.refresh());
+            }, 50);
+        }
+
+        function toggleBox(boxId) {
+            const box = document.getElementById(boxId);
+            const type = boxId.split('-')[0];
+            const btn = document.getElementById(`btn-toggle-${type}`);
+            
+            box.classList.toggle('collapsed');
+            if (box.classList.contains('collapsed')) {
+                btn.classList.remove('active-tab');
+            } else {
+                btn.classList.add('active-tab');
+            }
+            updateDividersAndFlex();
+            refreshCodeMirrorEditors();
+        }
+
+        function toggleWebConsole() {
+            const consoleBox = document.querySelector('.js-console-container');
+            const btn = document.getElementById('btn-toggle-console');
+
+            consoleBox.classList.toggle('collapsed');
+
+            if (consoleBox.classList.contains('collapsed')) {
+                btn.classList.remove('active-tab');
+            } else {
+                btn.classList.add('active-tab');
+            }
+        }
+
+        function updateDividersAndFlex() {
+            const htmlBox = document.getElementById('html-box');
+            const cssBox = document.getElementById('css-box');
+            const jsBox = document.getElementById('js-box');
+
+            const htmlVis = !htmlBox.classList.contains('collapsed');
+            const cssVis = !cssBox.classList.contains('collapsed');
+            const jsVis = !jsBox.classList.contains('collapsed');
+
+            [htmlBox, cssBox, jsBox].forEach(b => {
+                if (b.classList.contains('collapsed')) {
+                    b.style.flex = '0 0 auto';
+                } else if (!b.style.flex || b.style.flex.startsWith('0')) {
+                    b.style.flex = '1';
+                }
+            });
+
+            document.getElementById('divider-html-css').style.display = (htmlVis && (cssVis || jsVis)) ? 'block' : 'none';
+            document.getElementById('divider-css-js').style.display = (cssVis && jsVis) ? 'block' : 'none';
+        }
+
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(async () => {
+                if (currentProjectKey) {
+                    const oldData = await dbGet(currentProjectKey) || {};
+                    const data = {
+                        type: oldData.type || "web",
+                        html: cmEditors.html.getValue(),
+                        css: cmEditors.css.getValue(),
+                        js: cmEditors.js.getValue(),
+                        py: cmEditors.py.getValue()
+                    };
+                    await dbSet(currentProjectKey, data);
+                }
+            }, 1000);
+        }
+
+        function toggleSidebar() {
+            document.getElementById("sidebar").classList.toggle("collapsed");
+            document.body.classList.toggle("sidebar-collapsed");
+            refreshCodeMirrorEditors();
+        }
+
+        function togglePreviewFullscreen() {
+            const col = document.getElementById("editors-column");
+            col.style.display = col.style.display === "none" ? "flex" : "none";
+            colDivider.style.display = col.style.display === "none" ? "none" : "block";
+        }
+
+        function updateWebPreview() {
+            clearWebConsole();
+
+            const consoleIntercepter = `<script>
+(function(){
+    function sendLog(type, args, line) {
+        try {
+            var msg = Array.from(args).map(function(a){
+                if (a instanceof Error) return a.message;
+                return typeof a === 'object' ? JSON.stringify(a) : String(a);
+            }).join(' ');
+            var origin = window.location.origin === 'null' ? '*' : window.location.origin;
+            window.parent.postMessage({ type: 'console', logType: type, message: msg, line: line || null }, origin);
+        } catch(e) {}
+    }
+    var origLog = console.log, origError = console.error, origWarn = console.warn;
+    console.log = function(){ sendLog('log', arguments); origLog.apply(console, arguments); };
+    console.error = function(){ sendLog('error', arguments); origError.apply(console, arguments); };
+    console.warn = function(){ sendLog('warn', arguments); origWarn.apply(console, arguments); };
+    window.onerror = function(msg, url, line, col, error) {
+        sendLog('error', [msg], line);
+        return false;
+    };
+})();
+<\/script>
+`;
+
+            const html = (cmEditors.html ? cmEditors.html.getValue() : "") + "\n";
+            const css = `<style>\n${cmEditors.css ? cmEditors.css.getValue() : ""}\n</style>\n`;
+            const jsSource = cmEditors.js ? cmEditors.js.getValue() : "";
+
+            // Alles, was im finalen Dokument VOR dem eigentlichen JS-Code steht -
+            // daraus ergibt sich die Zeilen-Verschiebung für Fehlermeldungen.
+            const bodyBeforeJs = consoleIntercepter + html + css + `<script>\n`;
+            jsLineOffset = (bodyBeforeJs.match(/\n/g) || []).length;
+
+            const js = `<script>\n${jsSource}\n<\/script>`;
+
+            const iframe = document.getElementById("preview-frame");
+            iframe.srcdoc = consoleIntercepter + html + css + js;
+        }
+
+        async function createDefaultProject() {
+            const defaultData = {
+                type: "web",
+                html: "<h1>Hallo Welt</h1>\n<p>Willkommen in deinem Code-Editor!</p>",
+                css: "h1 { color: #007acc; }",
+                js: "console.log('Projekt gestartet');",
+                py: ""
+            };
+            const key = "codepen_MeinProjekt";
+            await dbSet(key, defaultData);
+            await loadProjects();
+            await openProject(key);
+        }
+
+        async function createNewProject() {
+            openProjectModal("web");
+        }
+
+        function setProjectTypeFilter(type) {
+            selectedTypeFilter = type;
+            ['all', 'web', 'python'].forEach(t => {
+                const btn = document.getElementById(`filter-btn-${t}`);
+                if (t === type) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            filterProjects();
+        }
+
+        async function loadProjects() {
+            const list = document.getElementById("project-list");
+            list.innerHTML = "";
+            const keys = await dbGetAllKeys();
+
+            for (const key of keys) {
+                try {
+                    const data = await dbGet(key);
+                    if (!data) continue;
+
+                    const name = key.replace("codepen_", "");
+                    const projectType = data.type || "web";
+                    const typeLabel = projectType === "python" ? "[Python]" : "[Web]";
+                    
+                    const li = document.createElement("li");
+                    li.dataset.key = key;
+                    li.dataset.type = projectType;
+                    li.innerText = `${typeLabel} ${name}`;
+                    
+                    if (key === currentProjectKey) {
+                        li.classList.add("active");
+                    }
+
+                    li.onclick = function() {
+                        openProject(key);
+                    };
+                    
+                    list.appendChild(li);
+                } catch (e) {
+                    console.error("Fehler beim Laden:", key, e);
+                }
+            }
+
+            filterProjects();
+        }
+
+        async function openProject(key) {
+            const data = await dbGet(key);
+            if (!data) return;
+            
+            currentProjectKey = key;
+            rememberRecentProject(key);
+            clearWebConsole();
+            hideHome();
+            const projectType = data.type || "web";
+
+            // WICHTIG: den Python-Laufzeitzustand (Namespace, laufender
+            // Code, evtl. noch offene input()-Abfrage) des VORHER offenen
+            // Projekts nie mit ins neu geöffnete Projekt nehmen - sonst
+            // hängt z.B. eine Eingabeaufforderung eines ganz anderen
+            // Projekts noch in der Luft, oder Variablen bleiben über
+            // Projektgrenzen hinweg erhalten.
+            clearPythonRuntimeState();
+            const pyOut = document.getElementById("python-output");
+            if (pyOut) {
+                if (pyodide) {
+                    pyOut.dataset.state = "ready";
+                    pyOut.textContent = t("ready");
+                } else {
+                    pyOut.dataset.state = "starting";
+                    pyOut.textContent = t("starting");
+                }
+            }
+
+            cmEditors.html.setValue(data.html || "");
+            cmEditors.html.clearHistory();
+            cmEditors.css.setValue(data.css || "");
+            cmEditors.css.clearHistory();
+            cmEditors.js.setValue(data.js || "");
+            cmEditors.js.clearHistory();
+            cmEditors.py.setValue(data.py || "");
+            cmEditors.py.clearHistory();
+
+            const btnWeb = document.getElementById("btn-tab-web");
+            const btnPy = document.getElementById("btn-tab-python");
+            const webTab = document.getElementById("web-tab");
+            const pyTab = document.getElementById("python-tab");
+
+            if (projectType === "python") {
+                btnWeb.style.display = "none";
+                btnPy.style.display = "inline-block";
+                
+                webTab.classList.remove("active");
+                pyTab.classList.add("active");
+            } else {
+                btnWeb.style.display = "inline-block";
+                btnPy.style.display = "none";
+
+                pyTab.classList.remove("active");
+                webTab.classList.add("active");
+                updateWebPreview();
+            }
+
+            document.querySelectorAll("#project-list li").forEach(li => {
+                if (li.dataset.key === key) {
+                    li.classList.add("active");
+                } else {
+                    li.classList.remove("active");
+                }
+            });
+
+            renderFileTree();
+            refreshCodeMirrorEditors();
+        }
+
+        async function saveCurrentProject() {
+            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            const oldData = await dbGet(currentProjectKey) || {};
+            
+            const data = {
+                type: oldData.type || "web",
+                html: cmEditors.html.getValue(),
+                css: cmEditors.css.getValue(),
+                js: cmEditors.js.getValue(),
+                py: cmEditors.py.getValue()
+            };
+            await dbSet(currentProjectKey, data);
+            setSaveStatus("saved", t("savedStatus"));
+            alert(t("projectSaved"));
+        }
+
+        async function renameCurrentProject() {
+            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            const oldName = currentProjectKey.replace("codepen_", "");
+            const newName = await openTextDialog(t("renameProjectTitle"), t("renameProjectLabel"), oldName);
+            if (!newName || newName.trim() === oldName) return;
+
+            const cleanName = newName.trim();
+            if (!cleanName) return alert(t("enterProjectName"));
+            const newKey = "codepen_" + cleanName;
+            if (await dbGet(newKey)) {
+                return alert(t("nameExists"));
+            }
+
+            const data = await dbGet(currentProjectKey);
+            await dbSet(newKey, data);
+            await dbDelete(currentProjectKey);
+
+            currentProjectKey = newKey;
+            await loadProjects();
+            await openProject(newKey);
+        }
+
+        async function deleteCurrentProject() {
+            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            const name = currentProjectKey.replace("codepen_", "");
+            const ok = await openConfirmDialog(t("deleteProjectTitle"), t("deleteProjectMsg", name));
+            if (!ok) return;
+
+            await dbDelete(currentProjectKey);
+            recentProjects = recentProjects.filter(k => k !== currentProjectKey);
+            localStorage.setItem("codeforge_recent", JSON.stringify(recentProjects));
+            currentProjectKey = null;
+            clearWebConsole();
+
+            const keys = await dbGetAllKeys();
+            await loadProjects();
+            if (keys.length > 0) {
+                await openProject(keys[0]);
+            } else {
+                await createDefaultProject();
+            }
+        }
+
+        function filterProjects() {
+            const text = document.getElementById("search-input").value.toLowerCase();
+            
+            document.querySelectorAll("#project-list li").forEach(li => {
+                const matchesText = li.innerText.toLowerCase().includes(text);
+                const matchesType = (selectedTypeFilter === "all") || (li.dataset.type === selectedTypeFilter);
+
+                if (matchesText && matchesType) {
+                    li.style.display = "flex";
+                } else {
+                    li.style.display = "none";
+                }
+            });
+        }
+
+        async function exportProjects() {
+            const keys = await dbGetAllKeys();
+            if (keys.length === 0) {
+                alert(t("noProjectsToExport"));
+                return;
+            }
+
+            const mode = await openTextDialog(
+                t("exportProjectsTitle"),
+                t("exportProjectsLabel"),
+                "1"
+            );
+
+            if (!mode) return;
+
+            let exportData = {};
+            let filename = "";
+
+            if (mode.trim() === "1") {
+                if (!currentProjectKey) {
+                    alert(t("noProjectSelected"));
+                    return;
+                }
+                const projectName = currentProjectKey.replace("codepen_", "");
+                exportData[currentProjectKey] = await dbGet(currentProjectKey);
+                filename = `project_${projectName}_${new Date().toISOString().slice(0, 10)}.json`;
+            } else if (mode.trim() === "2") {
+                for (const key of keys) {
+                    exportData[key] = await dbGet(key);
+                }
+                filename = `projects_backup_all_${new Date().toISOString().slice(0, 10)}.json`;
+            } else {
+                alert(t("invalidInput"));
+                return;
+            }
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", filename);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importProjects(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    let count = 0;
+
+                    for (const key of Object.keys(importedData)) {
+                        if (key.startsWith("codepen_")) {
+                            let targetKey = key;
+                            let baseName = key.replace("codepen_", "");
+                            let counter = 1;
+
+                            while (await dbGet(targetKey)) {
+                                targetKey = `codepen_${baseName}_Kopie${counter > 1 ? counter : ''}`;
+                                counter++;
+                            }
+
+                            await dbSet(targetKey, importedData[key]);
+                            count++;
+                        }
+                    }
+
+                    alert(t("importSuccess", count));
+                    await loadProjects();
+                    
+                    const keys = await dbGetAllKeys();
+                    if (keys.length > 0) {
+                        await openProject(keys[0]);
+                    }
+                } catch (err) {
+                    alert(t("importError"));
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = "";
+        }
+
+
+        /* =========================================================
+           CODEFORGE FEATURES
+           ========================================================= */
+        let projectTypeForModal = "web";
+        let currentMobileFile = "html";
+        let recentProjects = JSON.parse(localStorage.getItem("codeforge_recent") || "[]");
+
+        function setSaveStatus(status, text) {
+            const el = document.getElementById("save-status");
+            if (!el) return;
+            el.textContent = text || status;
+            el.style.color = status === "saving" ? "#ffc107" : (status === "saved" ? "#8bc34a" : "#ff6b6b");
+        }
+
+        function showHome() {
+            renderRecentProjects();
+            document.getElementById("home-screen").classList.add("active");
+        }
+
+        function hideHome() {
+            document.getElementById("home-screen").classList.remove("active");
+        }
+
+        async function renderRecentProjects() {
+            const box = document.getElementById("recent-projects");
+            if (!box) return;
+
+            // Nur Projekte behalten, die tatsächlich noch existieren -
+            // gelöschte Projekte verschwinden dadurch auch aus der
+            // "Zuletzt geöffnet"-Liste auf der Startseite.
+            const existing = [];
+            for (const key of recentProjects) {
+                const data = await dbGet(key);
+                if (data) existing.push(key);
+            }
+            if (existing.length !== recentProjects.length) {
+                recentProjects = existing;
+                localStorage.setItem("codeforge_recent", JSON.stringify(recentProjects));
+            }
+
+            box.innerHTML = "";
+            if (!recentProjects.length) {
+                box.innerHTML = '<div style="color:var(--muted);font-size:13px;">' + t("noRecentProjects") + '</div>';
+                return;
+            }
+            recentProjects.slice(0, 8).forEach(key => {
+                const item = document.createElement("div");
+                item.className = "recent-item";
+                item.textContent = key.replace("codepen_", "");
+                item.onclick = () => { hideHome(); openProject(key); };
+                box.appendChild(item);
+            });
+        }
+
+        function rememberRecentProject(key) {
+            recentProjects = [key, ...recentProjects.filter(k => k !== key)].slice(0, 8);
+            localStorage.setItem("codeforge_recent", JSON.stringify(recentProjects));
+            renderRecentProjects();
+        }
+
+        function openProjectModal(type = "web") {
+            projectTypeForModal = type;
+            chooseProjectType(type);
+            document.getElementById("project-modal").classList.add("open");
+            setTimeout(() => document.getElementById("new-project-name").focus(), 50);
+        }
+
+        function closeProjectModal() {
+            document.getElementById("project-modal").classList.remove("open");
+        }
+
+        function chooseProjectType(type) {
+            projectTypeForModal = type;
+            document.getElementById("choice-web").classList.toggle("active", type === "web");
+            document.getElementById("choice-python").classList.toggle("active", type === "python");
+            const select = document.getElementById("project-template");
+            const previousValue = select.value;
+            select.innerHTML = type === "python"
+                ? `<option value="blank">${t("optBlank")}</option><option value="starter">${t("optPyStarter")}</option><option value="terminal">${t("optTerminalStarter")}</option>`
+                : `<option value="blank">${t("optBlank")}</option><option value="starter">${t("optWebStarter")}</option><option value="game">${t("optJsGame")}</option><option value="landing">${t("optLandingPage")}</option>`;
+            // Auswahl beibehalten, wenn sie in der neuen Liste noch existiert
+            // (z.B. bei Sprachwechsel während das Modal offen ist). Beim
+            // tatsächlichen Wechsel Web<->Python gibt es den Wert meist gar
+            // nicht mehr, dann bleibt es automatisch bei der ersten Option.
+            if ([...select.options].some(o => o.value === previousValue)) {
+                select.value = previousValue;
+            }
+        }
+
+        async function createProjectFromModal() {
+            const name = document.getElementById("new-project-name").value.trim();
+            if (!name) return alert(t("enterProjectName"));
+            const key = "codepen_" + name;
+            if (await dbGet(key)) return alert(t("nameExists2"));
+            const template = document.getElementById("project-template").value;
+            let data = { type: projectTypeForModal, html:"", css:"", js:"", py:"" };
+
+            if (projectTypeForModal === "python") {
+                if (template !== "blank") data.py = 'name = input("Wie heißt du? ")\nprint(f"Hallo {name}!")';
+            } else {
+                if (template === "starter") {
+                    data.html = '<main class="card"><h1>Hallo CodeForge 👋</h1><p>Dein neues Webprojekt.</p><button onclick="hello()">Klick mich</button></main>';
+                    data.css = 'body{font-family:sans-serif;display:grid;place-items:center;min-height:100vh}.card{padding:32px;border:1px solid #ddd;border-radius:16px}';
+                    data.js = 'function hello(){alert("Hallo Welt!");}';
+                } else if (template === "game") {
+                    data.html = '<h1>Kleines Spiel</h1><button id="score">Punkte: 0</button>';
+                    data.css = 'body{font-family:sans-serif;text-align:center;padding:40px}button{font-size:24px;padding:15px}';
+                    data.js = 'let score=0;document.getElementById("score").onclick=()=>{score++;document.getElementById("score").textContent="Punkte: "+score;}';
+                } else if (template === "landing") {
+                    data.html = '<section class="hero"><h1>Dein Produkt</h1><p>Eine einfache Landing Page.</p><a href="#start">Loslegen</a></section>';
+                    data.css = '.hero{text-align:center;padding:15vh 20px;font-family:sans-serif}h1{font-size:56px;margin-bottom:12px}a{padding:12px 20px;border-radius:8px;background:#007acc;color:#fff;text-decoration:none}';
+                } else {
+                    data.html = "<h1>Hallo Welt</h1>";
+                }
+            }
+            await dbSet(key, data);
+            closeProjectModal();
+            await loadProjects();
+            await openProject(key);
+        }
+
+        function renderFileTree() {
+            const box = document.getElementById("file-tree");
+            if (!box) return;
+            box.style.display = currentProjectKey ? "block" : "none";
+            box.innerHTML = "";
+            const projectType = document.getElementById("btn-tab-python").style.display !== "none" ? "python" : "web";
+            const files = projectType === "python"
+                ? [["py","main.py","🐍"]]
+                : [["html","index.html","🌐"],["css","style.css","🎨"],["js","script.js","⚡"]];
+            files.forEach(([key,name,icon]) => {
+                const div = document.createElement("div");
+                div.className = "file-tree-item" + (currentMobileFile === key ? " active" : "");
+                div.textContent = icon + " " + name;
+                div.onclick = () => mobileSelectFile(key);
+                box.appendChild(div);
+            });
+        }
+
+        function mobileSelectFile(file) {
+            currentMobileFile = file;
+            ["html","css","js"].forEach(k => {
+                const box = document.getElementById(k + "-box");
+                if (box) box.classList.toggle("mobile-hidden", k !== file && window.innerWidth <= 760);
+                const btn = document.getElementById("mobile-" + k);
+                if (btn) btn.classList.toggle("active", k === file);
+            });
+
+            // Auf dem Desktop sind ohnehin alle drei Editoren gleichzeitig
+            // sichtbar - ein Klick in der "DATEIEN"-Liste hatte dort bisher
+            // keinerlei sichtbaren Effekt. Jetzt wird zusätzlich zum
+            // passenden Editor gescrollt und er kurz farblich hervorgehoben,
+            // damit der Klick auch am Desktop erkennbar etwas bewirkt.
+            // Nur scrollen/hervorheben/fokussieren, wenn der Web-Tab
+            // gerade wirklich aktiv ist. Sonst würde z.B. beim Start mit
+            // einem zuletzt geöffneten PYTHON-Projekt unsichtbar der
+            // (ausgeblendete) HTML-Editor den Fokus bekommen.
+            const targetBox = document.getElementById(file + "-box");
+            if (targetBox && document.getElementById("web-tab").classList.contains("active")) {
+                targetBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                targetBox.classList.add("file-jump-highlight");
+                setTimeout(() => targetBox.classList.remove("file-jump-highlight"), 900);
+                const cm = cmEditors[file];
+                if (cm) setTimeout(() => cm.focus(), 250);
+            }
+
+            renderFileTree();
+            refreshCodeMirrorEditors();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle("light-theme");
+            const light = document.body.classList.contains("light-theme");
+            localStorage.setItem("codeforge_theme", light ? "light" : "dark");
+            refreshCodeMirrorEditors();
+            setTimeout(refreshCodeMirrorEditors, 50);
+        }
+
+        function toggleEditorFullscreen() {
+            const target = document.getElementById("main");
+            if (!document.fullscreenElement) {
+                target.requestFullscreen?.();
+            } else {
+                document.exitFullscreen?.();
+            }
+        }
+
+        async function exportCurrentAsZip() {
+            if (!currentProjectKey) return alert(t("selectProjectFirst2"));
+            if (!window.JSZip) return alert(t("zipModuleError"));
+            const data = await dbGet(currentProjectKey);
+            if (!data) return;
+            const zip = new JSZip();
+            const name = currentProjectKey.replace("codepen_", "");
+            if (data.type === "python") {
+                zip.file("main.py", data.py || "");
+            } else {
+                zip.file("index.html", data.html || "");
+                zip.file("style.css", data.css || "");
+                zip.file("script.js", data.js || "");
+            }
+            const blob = await zip.generateAsync({type:"blob"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = name + ".zip";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        function getActiveCodeEditor() {
+            return getActiveEditor();
+        }
+
+        function openSearchModal() {
+            document.getElementById("search-modal").classList.add("open");
+            document.getElementById("search-term").focus();
+        }
+        function closeSearchModal() { document.getElementById("search-modal").classList.remove("open"); }
+
+        function findInCurrentCode() {
+            const term = document.getElementById("search-term").value;
+            const editor = getActiveCodeEditor();
+            const box = document.getElementById("search-results");
+            if (!editor || !term) return;
+            const value = editor.getValue();
+            const matches = [...value.matchAll(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))];
+            box.textContent = t("matchesFound", matches.length);
+            if (matches.length) editor.setSelection(editor.posFromIndex(matches[0].index), editor.posFromIndex(matches[0].index + term.length));
+        }
+
+        function replaceInCurrentCode() {
+            const term = document.getElementById("search-term").value;
+            const replacement = document.getElementById("replace-term").value;
+            const editor = getActiveCodeEditor();
+            if (!editor || !term) return;
+            const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const count = (editor.getValue().match(new RegExp(escaped, "g")) || []).length;
+            editor.setValue(editor.getValue().replace(new RegExp(escaped, "g"), replacement));
+            document.getElementById("search-results").textContent = t("matchesReplaced", count);
+            triggerAutoSave();
+        }
+
+        function getCommands() {
+            return [
+                [t("cmdNewWeb"), () => openProjectModal("web")],
+                [t("cmdNewPy"), () => openProjectModal("python")],
+                [t("cmdSave"), () => saveCurrentProject()],
+                [t("cmdFormat"), () => formatCurrentCode()],
+                [t("cmdSearch"), () => openSearchModal()],
+                [t("cmdTheme"), () => toggleTheme()],
+                [t("cmdFullscreen"), () => toggleEditorFullscreen()],
+                [t("cmdZip"), () => exportCurrentAsZip()],
+                [t("cmdHome"), () => showHome()],
+            ];
+        }
+
+        function openCommandPalette() {
+            const modal = document.getElementById("command-palette");
+            modal.classList.add("open");
+            const input = document.getElementById("command-input");
+            input.value = "";
+            renderCommands("");
+            input.focus();
+        }
+
+        function closeCommandPalette() {
+            document.getElementById("command-palette").classList.remove("open");
+        }
+
+        function renderCommands(filter) {
+            const list = document.getElementById("command-list");
+            list.innerHTML = "";
+            getCommands().filter(([name]) => name.toLowerCase().includes(filter.toLowerCase())).forEach(([name, fn]) => {
+                const item = document.createElement("div");
+                item.className = "command-item";
+                item.textContent = name;
+                item.onclick = () => { document.getElementById("command-palette").classList.remove("open"); fn(); };
+                list.appendChild(item);
+            });
+        }
+
+        function initProKeyboardShortcuts() {
+            const cmdInput = document.getElementById("command-input");
+            cmdInput.addEventListener("input", () => renderCommands(cmdInput.value));
+            document.addEventListener("keydown", e => {
+                const mod = e.ctrlKey || e.metaKey;
+                if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); openCommandPalette(); }
+                if (mod && e.key.toLowerCase() === "f") { e.preventDefault(); openSearchModal(); }
+                if (e.key === "Escape") {
+                    document.querySelectorAll("#command-palette.open,#search-modal.open,#project-modal.open").forEach(x => x.classList.remove("open"));
+                    // Bestätigen-Dialog ("Projekt löschen?" etc.) über Escape
+                    // wie ein Klick auf "Abbrechen" behandeln - vorher war er
+                    // als einziges Modal per Escape gar nicht schließbar.
+                    if (document.getElementById("confirm-dialog").classList.contains("open")) {
+                        closeConfirmDialog(false);
+                    }
+                }
+            });
+        }
+
+        function applyStoredTheme() {
+            if (localStorage.getItem("codeforge_theme") === "light") document.body.classList.add("light-theme");
+        }
+
+        // Autosave indicator: wrap existing autosave trigger without changing its storage behavior.
+        const originalTriggerAutoSave = triggerAutoSave;
+        triggerAutoSave = function() {
+            setSaveStatus("saving", t("savingStatus"));
+            originalTriggerAutoSave();
+            setTimeout(() => setSaveStatus("saved", t("savedStatus")), 1200);
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveCurrentProject();
+            }
+        });
+
+
+        /* =========================================================
+           FINAL UX FIXES
+           ========================================================= */
+        let previousView = "editor";
+        let textDialogResolver = null;
+
+        function goBackToPreviousView() {
+            // Startseite -> vorheriges Projekt; Projekt -> Startseite.
+            const home = document.getElementById("home-screen");
+            if (home && home.classList.contains("active")) {
+                if (currentProjectKey) {
+                    hideHome();
+                    openProject(currentProjectKey);
+                }
+                return;
+            }
+            showHome();
+        }
+
+        let confirmDialogResolver = null;
+        function openConfirmDialog(title, message) {
+            return new Promise(resolve => {
+                confirmDialogResolver = resolve;
+                document.getElementById("confirm-dialog-title").textContent = title;
+                document.getElementById("confirm-dialog-message").textContent = message;
+                document.getElementById("confirm-dialog").classList.add("open");
+            });
+        }
+        function closeConfirmDialog(value) {
+            document.getElementById("confirm-dialog").classList.remove("open");
+            if (confirmDialogResolver) {
+                const r = confirmDialogResolver;
+                confirmDialogResolver = null;
+                r(value);
+            }
+        }
+
+        function openTextDialog(title, label, value = "") {
+            return new Promise(resolve => {
+                textDialogResolver = resolve;
+                document.getElementById("text-dialog-title").textContent = title;
+                document.getElementById("text-dialog-label").textContent = label;
+                const input = document.getElementById("text-dialog-input");
+                input.value = value;
+                document.getElementById("text-dialog").classList.add("open");
+                setTimeout(() => { input.focus(); input.select(); }, 40);
+            });
+        }
+
+        function closeTextDialog(value) {
+            document.getElementById("text-dialog").classList.remove("open");
+            if (textDialogResolver) {
+                const resolve = textDialogResolver;
+                textDialogResolver = null;
+                resolve(value);
+            }
+        }
+
+        document.getElementById("text-dialog")?.addEventListener("keydown", e => {
+            if (e.key === "Enter") closeTextDialog(document.getElementById("text-dialog-input").value);
+            if (e.key === "Escape") closeTextDialog(null);
+        });
+
+        function appendConsoleEntry(type, message, location = "", jumpLine = null) {
+            const output = document.getElementById("js-console-output");
+            if (!output) return;
+            const entry = document.createElement("div");
+            entry.className = "console-entry " + type;
+            const icon = type === "success" ? "✓" : type === "warn" ? "⚠" : type === "error" ? "✗" : "ℹ";
+            entry.innerHTML = '<span class="console-icon">' + icon + '</span><span>' +
+                escapeHtml(String(message)) +
+                (location ? '<span class="console-location">' + escapeHtml(location) + '</span>' : '') +
+                '</span>';
+            if (jumpLine) {
+                entry.classList.add("console-entry-clickable");
+                entry.title = t("jumpToLineTitle", jumpLine);
+                entry.addEventListener("click", () => jumpToJsLine(jumpLine));
+            }
+            output.appendChild(entry);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function escapeHtml(value) {
+            return value.replace(/[&<>"']/g, c => ({
+                "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+            }[c]));
+        }
+
+        function appendConsoleWarning(message) {
+            appendConsoleEntry("warn", message);
+        }
+
+        function appendConsoleError(message, location) {
+            appendConsoleEntry("error", message, location);
+        }
+
+        function appendConsoleSuccess(message) {
+            appendConsoleEntry("success", message);
+        }
+
+
+        window.addEventListener("popstate", () => {
+            if (currentProjectKey) showHome();
+        });
+
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            applyStoredTheme();
+            initProKeyboardShortcuts();
+            initCodeMirror();
+            initPyodide();
+            updateDividersAndFlex();
+            await loadProjects();
+
+            const allKeys = await dbGetAllKeys();
+            if (allKeys.length > 0) {
+                await openProject(allKeys[0]);
+            } else {
+                await createDefaultProject();
+            }
+            renderRecentProjects();
+            hideHome();
+            mobileSelectFile("html");
+        });
+    </script>
+</body>
+</html>
