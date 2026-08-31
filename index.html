@@ -1002,6 +1002,59 @@
         }
 
     
+        /* =========================================================
+           TOAST-BENACHRICHTIGUNGEN
+           Ersetzt native, hässliche Browser-alert()-Popups durch eigene,
+           ins Design passende Hinweise (verschwinden von selbst, blockieren
+           nichts). Ein System für Erfolg/Warnung/Fehler statt verstreuter
+           alert()-Aufrufe.
+           ========================================================= */
+        #toast-container {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: min(420px, 88vw);
+            padding: 11px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            box-shadow: 0 8px 24px rgba(0,0,0,.35);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity .2s ease, transform .2s ease;
+        }
+        .toast.toast-show { opacity: 1; transform: translateY(0); }
+        .toast.toast-hide { opacity: 0; transform: translateY(-10px); }
+        .toast .toast-icon { flex-shrink: 0; font-size: 15px; }
+        .toast.toast-success { background: #14532d; border-color: #18864b; }
+        .toast.toast-warning { background: #4a3a08; border-color: #9a6700; }
+        .toast.toast-error   { background: #4a1116; border-color: #d1242f; }
+
+        body.light-theme .toast {
+            color: #1f2328;
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+        }
+        body.light-theme .toast.toast-success { background: #d9f2e3; border-color: #18864b; }
+        body.light-theme .toast.toast-warning { background: #fdf0d5; border-color: #9a6700; }
+        body.light-theme .toast.toast-error   { background: #fde3e3; border-color: #d1242f; }
+
         /* Sidebar-Aktionsbuttons bleiben im Light Mode neutral (weiß/grau,
            fette Schrift) statt farbig – siehe .colored-sidebar-btn oben. */
 
@@ -1361,6 +1414,7 @@
 </head>
 <body>
     <button id="browser-back-btn" onclick="goBackToPreviousView()" data-i18n-title="backBtnTitle" title="Zur vorherigen Ansicht">‹</button>
+    <div id="toast-container"></div>
 
     <div id="home-screen">
         <button id="app-lang-toggle" class="lang-toggle-btn" onclick="toggleAppLang()" title="Sprache wechseln (Deutsch/Englisch)">🇩🇪 Deutsch</button>
@@ -2388,7 +2442,7 @@ builtins.input = __browser_terminal_input
                 document.body.removeChild(ta);
                 if (onSuccess) onSuccess();
             } catch (e) {
-                alert(t("copyFailed"));
+                showToast(t("copyFailed"), "error");
             }
         }
 
@@ -2843,7 +2897,7 @@ builtins.input = __browser_terminal_input
         }
 
         async function saveCurrentProject() {
-            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            if (!currentProjectKey) return showToast(t("selectProjectFirst"), "warning");
             const oldData = await dbGet(currentProjectKey) || {};
             
             const data = {
@@ -2855,20 +2909,20 @@ builtins.input = __browser_terminal_input
             };
             await dbSet(currentProjectKey, data);
             setSaveStatus("saved", t("savedStatus"));
-            alert(t("projectSaved"));
+            showToast(t("projectSaved"), "success");
         }
 
         async function renameCurrentProject() {
-            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            if (!currentProjectKey) return showToast(t("selectProjectFirst"), "warning");
             const oldName = currentProjectKey.replace("codepen_", "");
             const newName = await openTextDialog(t("renameProjectTitle"), t("renameProjectLabel"), oldName);
             if (!newName || newName.trim() === oldName) return;
 
             const cleanName = newName.trim();
-            if (!cleanName) return alert(t("enterProjectName"));
+            if (!cleanName) return showToast(t("enterProjectName"), "warning");
             const newKey = "codepen_" + cleanName;
             if (await dbGet(newKey)) {
-                return alert(t("nameExists"));
+                return showToast(t("nameExists"), "warning");
             }
 
             const data = await dbGet(currentProjectKey);
@@ -2881,7 +2935,7 @@ builtins.input = __browser_terminal_input
         }
 
         async function deleteCurrentProject() {
-            if (!currentProjectKey) return alert(t("selectProjectFirst"));
+            if (!currentProjectKey) return showToast(t("selectProjectFirst"), "warning");
             const name = currentProjectKey.replace("codepen_", "");
             const ok = await openConfirmDialog(t("deleteProjectTitle"), t("deleteProjectMsg", name));
             if (!ok) return;
@@ -2919,7 +2973,7 @@ builtins.input = __browser_terminal_input
         async function exportProjects() {
             const keys = await dbGetAllKeys();
             if (keys.length === 0) {
-                alert(t("noProjectsToExport"));
+                showToast(t("noProjectsToExport"), "warning");
                 return;
             }
 
@@ -2936,7 +2990,7 @@ builtins.input = __browser_terminal_input
 
             if (mode.trim() === "1") {
                 if (!currentProjectKey) {
-                    alert(t("noProjectSelected"));
+                    showToast(t("noProjectSelected"), "warning");
                     return;
                 }
                 const projectName = currentProjectKey.replace("codepen_", "");
@@ -2948,7 +3002,7 @@ builtins.input = __browser_terminal_input
                 }
                 filename = `projects_backup_all_${new Date().toISOString().slice(0, 10)}.json`;
             } else {
-                alert(t("invalidInput"));
+                showToast(t("invalidInput"), "error");
                 return;
             }
 
@@ -2987,7 +3041,7 @@ builtins.input = __browser_terminal_input
                         }
                     }
 
-                    alert(t("importSuccess", count));
+                    showToast(t("importSuccess", count), "success");
                     await loadProjects();
                     
                     const keys = await dbGetAllKeys();
@@ -2995,7 +3049,7 @@ builtins.input = __browser_terminal_input
                         await openProject(keys[0]);
                     }
                 } catch (err) {
-                    alert(t("importError"));
+                    showToast(t("importError"), "error");
                 }
             };
             reader.readAsText(file);
@@ -3009,6 +3063,29 @@ builtins.input = __browser_terminal_input
         let projectTypeForModal = "web";
         let currentMobileFile = "html";
         let recentProjects = JSON.parse(localStorage.getItem("codeforge_recent") || "[]");
+
+        // Ersetzt native alert()-Popups (siehe Screenshot: hässliches
+        // Browser-eigenes "Auf dieser Seite wird Folgendes angezeigt").
+        // type: "success" | "warning" | "error"
+        function showToast(message, type = "warning") {
+            const container = document.getElementById("toast-container");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            toast.className = "toast toast-" + type;
+            const icon = type === "success" ? "✓" : type === "error" ? "✗" : "⚠";
+            toast.innerHTML = '<span class="toast-icon">' + icon + '</span><span>' + escapeHtml(String(message)) + '</span>';
+
+            const remove = () => {
+                toast.classList.add("toast-hide");
+                setTimeout(() => toast.remove(), 200);
+            };
+            toast.addEventListener("click", remove);
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add("toast-show"));
+            setTimeout(remove, 3200);
+        }
 
         function setSaveStatus(status, text) {
             const el = document.getElementById("save-status");
@@ -3094,9 +3171,9 @@ builtins.input = __browser_terminal_input
 
         async function createProjectFromModal() {
             const name = document.getElementById("new-project-name").value.trim();
-            if (!name) return alert(t("enterProjectName"));
+            if (!name) return showToast(t("enterProjectName"), "warning");
             const key = "codepen_" + name;
-            if (await dbGet(key)) return alert(t("nameExists2"));
+            if (await dbGet(key)) return showToast(t("nameExists2"), "warning");
             const template = document.getElementById("project-template").value;
             let data = { type: projectTypeForModal, html:"", css:"", js:"", py:"" };
 
@@ -3191,8 +3268,8 @@ builtins.input = __browser_terminal_input
         }
 
         async function exportCurrentAsZip() {
-            if (!currentProjectKey) return alert(t("selectProjectFirst2"));
-            if (!window.JSZip) return alert(t("zipModuleError"));
+            if (!currentProjectKey) return showToast(t("selectProjectFirst2"), "warning");
+            if (!window.JSZip) return showToast(t("zipModuleError"), "error");
             const data = await dbGet(currentProjectKey);
             if (!data) return;
             const zip = new JSZip();
