@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeForge – Web & Python IDE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/pyodide/v0.29.4/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- js-beautify via CDN für automatisches Einrücken / Formatieren -->
@@ -23,55 +26,52 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { display: flex; height: 100vh; background-color: #1e1e1e; color: #fff; overflow: hidden; user-select: none; }
-        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); }
+        html { --font-display: 'Space Grotesk', 'Inter', sans-serif; --font-ui: 'Inter', -apple-system, sans-serif; --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; }
+        body { display: flex; height: 100vh; background-color: var(--bg-canvas); color: var(--text); overflow: hidden; user-select: none; font-family: var(--font-ui); }
+
         /* Sidebar */
-        #sidebar { width: 220px; background: #252526; padding: 15px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid #333; transition: margin-left 0.3s ease; flex-shrink: 0; }
-        #sidebar.collapsed { margin-left: -220px; }
-        #sidebar input, #sidebar button { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #3c3c3c; color: white; }
-        #sidebar button { background: #007acc; cursor: pointer; border: none; font-weight: bold; }
-        
+        #sidebar { width: 228px; background: var(--bg-surface); padding: 16px 14px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); transition: margin-left 0.25s ease; flex-shrink: 0; }
+        #sidebar.collapsed { margin-left: -228px; }
+        #sidebar input, #sidebar button { width: 100%; padding: 9px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-surface-2); color: var(--text); font-size: 13px; }
+        #sidebar button { background: var(--bg-surface-2); cursor: pointer; border: 1px solid var(--border-strong); font-weight: 600; transition: background .12s ease, border-color .12s ease; }
+
         /* Filter-Buttons Style */
         .type-filter-bar { display: flex; gap: 4px; }
         .filter-btn {
             flex: 1;
-            padding: 5px !important;
+            padding: 6px !important;
             font-size: 11px;
+            border-radius: var(--radius-sm) !important;
             background: var(--toggle-inactive-bg) !important;
             border: 1px solid var(--toggle-inactive-border) !important;
             color: var(--toggle-inactive-text) !important;
-            font-weight: normal !important;
+            font-weight: 500 !important;
         }
         .filter-btn:hover { background: var(--toggle-inactive-hover-bg) !important; color: var(--toggle-inactive-hover-text) !important; }
         .filter-btn.active {
             background: var(--toggle-active-bg) !important;
             color: var(--toggle-active-text) !important;
             border-color: var(--toggle-active-border) !important;
-            font-weight: bold !important;
+            font-weight: 600 !important;
         }
 
-        /* Backup-Buttons Style */
-        .backup-bar { display: flex; gap: 4px; margin-top: 4px; border-top: 1px solid #333; padding-top: 8px; }
-        .backup-btn { flex: 1; padding: 6px !important; font-size: 11px; background: #4a4a4a !important; }
-        .backup-btn:hover { background: #5a5a5a !important; }
-
-        #project-list { list-style: none; flex-grow: 1; overflow-y: auto; margin-top: 5px; }
-        #project-list li { padding: 8px; margin-top: 5px; background: #2d2d2d; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-        #project-list li:hover { background: #37373d; }
-        #project-list li.active { border-left: 3px solid #007acc; background: #37373d; }
+        #project-list { list-style: none; flex-grow: 1; overflow-y: auto; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+        #project-list li { padding: 9px 10px; background: transparent; cursor: pointer; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 13px; border: 1px solid transparent; transition: background .12s ease, border-color .12s ease; }
+        #project-list li:hover { background: var(--bg-surface-2); }
+        #project-list li.active { border-color: var(--ember); background: var(--bg-surface-2); color: var(--text); }
 
         /* Main Area */
         #main { flex-grow: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; }
-        .top-bar { display: flex; background: #2d2d2d; align-items: center; justify-content: space-between; height: 40px; border-bottom: 1px solid #333; flex-shrink: 0; padding-right: 10px; }
+        .top-bar { display: flex; background: var(--bg-surface); align-items: center; justify-content: space-between; height: 44px; border-bottom: 1px solid var(--border); flex-shrink: 0; padding-right: 12px; }
         .tabs { display: flex; align-items: center; }
-        .tab-btn, .icon-btn { padding: 10px 15px; background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; }
+        .tab-btn, .icon-btn { padding: 10px 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: var(--font-ui); }
         .tab-btn {
             background: var(--toggle-inactive-bg);
             color: var(--toggle-inactive-text);
             border: 1px solid transparent;
             margin: 4px 2px;
-            border-radius: 5px;
+            border-radius: var(--radius-sm);
             font-weight: 600;
         }
         .tab-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
@@ -80,30 +80,32 @@
             color: var(--toggle-active-text) !important;
             border-color: var(--toggle-active-border) !important;
         }
-        .icon-btn:hover { background: #333; }
+        .icon-btn { border-radius: var(--radius-sm); }
+        .icon-btn:hover { background: var(--bg-surface-2); color: var(--text); }
 
         /* Format & Action Buttons */
-        .action-container { display: flex; gap: 5px; }
-        .action-btn { background: #4a4a4a; color: white; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
-        .action-btn:hover { background: #5a5a5a; }
+        .action-container { display: flex; gap: 6px; align-items: center; }
+        .action-btn { background: var(--bg-surface-2); color: var(--text); border: 1px solid var(--border-strong); padding: 6px 11px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-weight: 600; font-family: var(--font-ui); transition: border-color .12s ease, background .12s ease; display: inline-flex; align-items: center; gap: 6px; }
+        .action-btn:hover { border-color: var(--ember); }
 
         /* Tab Content Control */
-        .tab-content { display: none; width: 100%; height: calc(100vh - 40px); }
+        .tab-content { display: none; width: 100%; height: calc(100vh - 44px); }
         .tab-content.active { display: flex; }
 
         /* WEB TAB LAYOUT */
         #web-tab { width: 100%; height: 100%; position: relative; }
 
-        .editors-column { width: 50%; display: flex; flex-direction: column; background: #1e1e1e; min-width: 150px; height: 100%; }
+        .editors-column { width: 50%; display: flex; flex-direction: column; background: var(--bg-canvas); min-width: 150px; height: 100%; }
         
-        .restore-bar { display: flex; gap: 5px; background: #181818; padding: 4px 8px; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .restore-bar { display: flex; gap: 5px; background: var(--bg-surface); padding: 6px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .restore-btn {
             background: var(--toggle-inactive-bg);
             border: 1px solid var(--toggle-inactive-border);
             color: var(--toggle-inactive-text);
             font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 3px;
+            font-weight: 600;
+            padding: 4px 9px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
         }
         .restore-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
@@ -117,46 +119,48 @@
         .editor-box { display: flex; flex-direction: column; flex: 1; min-height: 32px; overflow: hidden; }
         .editor-box.collapsed { display: none !important; }
         
-        .editor-header { height: 32px; background: #252526; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; font-size: 12px; font-weight: bold; color: #aaa; user-select: none; flex-shrink: 0; }
+        .editor-header { height: 34px; background: var(--bg-surface); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; border-bottom: 1px solid var(--border); font-family: var(--font-mono); }
         .editor-header-left { display: flex; align-items: center; gap: 8px; }
-        .toggle-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 0 4px; }
-        .toggle-btn:hover { color: #fff; }
+        .toggle-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 4px; border-radius: var(--radius-sm); }
+        .toggle-btn:hover { color: var(--text); }
 
-        .row-divider { height: 6px; background: #2d2d2d; cursor: row-resize; transition: background 0.15s; z-index: 5; touch-action: none; flex-shrink: 0; display: none; }
-        .row-divider:hover, .row-divider.dragging { background: #007acc; }
+        .row-divider { height: 6px; background: var(--bg-surface); cursor: row-resize; transition: background 0.15s; z-index: 5; touch-action: none; flex-shrink: 0; display: none; }
+        .row-divider:hover, .row-divider.dragging { background: var(--ember); }
 
-        .col-divider { width: 8px; background: #2d2d2d; cursor: col-resize; transition: background 0.15s; z-index: 10; touch-action: none; flex-shrink: 0; }
-        .col-divider:hover, .col-divider.dragging { background: #007acc; }
+        .col-divider { width: 8px; background: var(--bg-surface); cursor: col-resize; transition: background 0.15s; z-index: 10; touch-action: none; flex-shrink: 0; }
+        .col-divider:hover, .col-divider.dragging { background: var(--ember); }
 
-        .editor-container { flex-grow: 1; display: flex; background: #1e1e1e; overflow: hidden; position: relative; }
-        .CodeMirror { width: 100%; height: 100%; font-family: monospace; font-size: 13px; line-height: 1.5; background: #1e1e1e !important; color: #d4d4d4 !important; }
-        .CodeMirror-gutters { background: #181818 !important; border-right: 1px solid #282828 !important; }
-        .CodeMirror-linenumber { color: #555 !important; }
+        .editor-container { flex-grow: 1; display: flex; background: var(--bg-inset); overflow: hidden; position: relative; }
+        .CodeMirror { width: 100%; height: 100%; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--bg-inset) !important; color: #e7e2f0 !important; }
+        .CodeMirror-gutters { background: var(--bg-inset) !important; border-right: 1px solid var(--border) !important; }
+        .CodeMirror-linenumber { color: #5c5568 !important; }
+        .CodeMirror-cursor { border-left: 2px solid var(--ember) !important; }
+        .CodeMirror-selected { background: var(--ember-glow) !important; }
 
         /* Preview Area & JS Console */
         .preview-container { flex-grow: 1; display: flex; flex-direction: column; background: #fff; min-width: 150px; position: relative; }
-        .preview-header { display: flex; justify-content: space-between; align-items: center; height: 35px; padding: 0 10px; background: #252526; font-size: 12px; color: #aaa; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; height: 36px; padding: 0 12px; background: var(--bg-surface); font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); flex-shrink: 0; font-weight: 600; }
         #preview-frame { width: 100%; flex-grow: 1; background: white; border: none; }
         .drag-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 99; }
         .dragging-active .drag-overlay { display: block; }
 
         /* Web Console UI */
-        .js-console-container { height: 140px; background: #111; border-top: 1px solid #333; display: flex; flex-direction: column; flex-shrink: 0; }
+        .js-console-container { height: 140px; background: var(--bg-inset); border-top: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
         .js-console-container.collapsed { display: none !important; }
-        .js-console-header { height: 28px; background: #252526; padding: 0 10px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: bold; color: #aaa; border-bottom: 1px solid #333; }
-        #js-console-output { flex-grow: 1; padding: 8px; font-family: monospace; font-size: 12px; overflow-y: auto; white-space: pre-wrap; color: #ccc; }
+        .js-console-header { height: 30px; background: var(--bg-surface); padding: 0 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        #js-console-output { flex-grow: 1; padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; overflow-y: auto; white-space: pre-wrap; color: #cfc9da; }
 
         /* PYTHON TAB */
-        #python-tab { width: 100%; height: 100%; padding: 15px; flex-direction: column; gap: 10px; background: #1e1e1e; }
+        #python-tab { width: 100%; height: 100%; padding: 16px; flex-direction: column; gap: 12px; background: var(--bg-canvas); }
         
-        .py-toolbar { display: flex; justify-content: space-between; align-items: center; height: 32px; flex-shrink: 0; }
-        .py-title { font-size: 13px; font-weight: bold; color: #3572A5; }
-        #run-py-btn { padding: 6px 16px; background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 13px; }
-        #run-py-btn:hover { background: #218838; }
+        .py-toolbar { display: flex; justify-content: space-between; align-items: center; height: 34px; flex-shrink: 0; }
+        .py-title { font-size: 13px; font-weight: 700; color: var(--ember); font-family: var(--font-mono); }
+        #run-py-btn { padding: 7px 18px; background: var(--ember); color: #ffffff; border: 1px solid var(--ember); font-weight: 700; cursor: pointer; border-radius: var(--radius-sm); font-size: 13px; transition: background .12s ease; }
+        #run-py-btn:hover { background: var(--ember-dim); color: #fff; }
 
-        .py-editor-wrapper { flex: 1; display: flex; border: 1px solid #333; border-radius: 4px; overflow: hidden; background: #1e1e1e; position: relative; }
+        .py-editor-wrapper { flex: 1; display: flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-inset); position: relative; }
         
-        .py-console-title { font-size: 12px; font-weight: bold; color: #aaa; margin-top: 5px; flex-shrink: 0; }
+        .py-console-title { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 5px; flex-shrink: 0; letter-spacing: .03em; }
 
         /* Python Terminal mit direkter Eingabe im Output-Bereich */
         .python-terminal {
@@ -166,9 +170,9 @@
             min-height: 220px;
             max-height: 220px;
             box-sizing: border-box;
-            background: #000;
-            color: #fff;
-            border-radius: 4px;
+            background: var(--bg-inset);
+            color: var(--text);
+            border-radius: var(--radius-md);
             border: 1px solid var(--input-border);
             display: flex;
             flex-direction: column;
@@ -180,12 +184,12 @@
         #python-output {
             flex: 1;
             min-height: 0;
-            background: #000;
-            color: #fff;
-            padding: 12px 12px 0 12px;
-            font-family: monospace;
+            background: var(--bg-inset);
+            color: var(--text);
+            padding: 12px 14px 0 14px;
+            font-family: var(--font-mono);
             font-size: 13px;
-            line-height: 1.45;
+            line-height: 1.5;
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-word;
@@ -196,8 +200,8 @@
             display: flex;
             align-items: center;
             min-height: 32px;
-            padding: 0 12px 10px 12px;
-            font-family: monospace;
+            padding: 0 14px 10px 14px;
+            font-family: var(--font-mono);
             font-size: 13px;
         }
 
@@ -206,21 +210,22 @@
         }
 
         #python-input-prompt {
-            color: #fff;
+            color: var(--ember);
             white-space: pre;
             flex-shrink: 0;
+            font-weight: 600;
         }
 
         #python-input {
             flex: 1;
             min-width: 0;
             background: transparent;
-            color: #fff;
-            border: none;
+            color: var(--text);
+            border: none !important;
             outline: none;
-            font-family: monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
-            caret-color: #fff;
+            caret-color: var(--ember);
             padding: 0;
         }
 
@@ -230,28 +235,62 @@
 
         /* Copy-Buttons */
         .editor-header-right { display: flex; align-items: center; gap: 4px; }
-        .copy-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 3px; transition: background 0.15s, color 0.15s; }
-        .copy-btn:hover { color: #fff; background: #3c3c3c; }
-        .copy-btn.copied { color: #28a745; }
+        .copy-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 3px 7px; border-radius: var(--radius-sm); transition: background 0.15s, color 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; flex-shrink: 0; min-width: max-content; }
+        .copy-btn:hover { color: var(--text); background: var(--bg-surface-2); }
+        .copy-btn.copied { color: var(--success); }
 
         /* Web-Preview "Code Ausführen" Button */
-        #reset-web-btn, #reset-py-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        #reset-web-btn:hover, #reset-py-btn:hover { background: #bb2d3b; }
+        #reset-web-btn, #reset-py-btn { background: transparent; color: #f0555a; border: 1px solid #f0555a; padding: 6px 11px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-weight: 700; transition: background .12s ease, color .12s ease; }
+        #reset-web-btn:hover, #reset-py-btn:hover { background: #f0555a; color: #1a0708; }
         .preview-header-right { display: flex; align-items: center; gap: 6px; }
+        .preview-pause-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:26px; padding:0; }
+        .preview-pause-btn.active { color: var(--ember) !important; background: var(--bg-surface-2); }
+        .preview-pause-btn:not(.active) { color: var(--ember) !important; }
+        .preview-pause-btn:hover, .preview-pause-btn.active:hover { color: var(--ember) !important; }
+        /* Im Light-Mode bekommt der pausierte Pause/Play-Button dieselbe dezente Umrandung wie die übrigen Toolbar-Buttons. */
+        body.light-theme .preview-pause-btn.active,
+        body.light-theme .preview-pause-btn.active:hover {
+            border: 1px solid var(--border-strong) !important;
+            background: var(--bg-surface-2) !important;
+        }
+        .console-copy-error { margin-left:auto; opacity:.75; white-space:nowrap; min-width:max-content; }
+        .console-entry { display:flex; align-items:flex-start; gap:7px; }
+        .console-entry > span:nth-child(2) { flex:1; min-width:0; }
+        .python-console-entry { width:100%; box-sizing:border-box; padding:2px 0; }
+        .python-console-entry .console-copy-error { margin-left:auto; }
 
         /* =========================================================
            CODEFORGE PRO UI
            ========================================================= */
         :root {
-            --bg: #1e1e1e;
-            --panel: #252526;
-            --panel2: #2d2d2d;
-            --border: #333;
-            --text: #fff;
-            --muted: #aaa;
-            --accent: #007acc;
-            --success: #28a745;
-            --danger: #dc3545;
+            /* === CodeForge Farbsystem: "Schmiede"-Konzept ===
+               Warmes, tiefes Anthrazit statt kaltem Standard-Editor-Grau.
+               EIN Akzent (Glut-Orange) statt vielen bunten Buttons -
+               bewusst sparsam eingesetzt für Fokus/Primäraktionen.
+               Klare Tiefenstaffelung: canvas < surface < surface-2 < inset. */
+            --bg-canvas: #17151b;
+            --bg-surface: #1e1b23;
+            --bg-surface-2: #28242e;
+            --bg-inset: #110f14;
+            --border: #322e3a;
+            --border-strong: #433d4d;
+            --text: #f1eee8;
+            --text-muted: #9d95a8;
+
+            --ember: #2f6fe0;
+            --ember-dim: #1f52ad;
+            --ember-glow: rgba(47, 111, 224, .32);
+
+            --bg: var(--bg-canvas);
+            --panel: var(--bg-surface);
+            --panel2: var(--bg-surface-2);
+            --muted: var(--text-muted);
+            --accent: var(--ember);
+            --success: #57b787;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
 
             /* Einheitliche Toggle/Filter-Zustände (HTML/CSS/JS/Konsole-
                Buttons, Alle/Web/Python-Filter, Web/Python-Tabs):
@@ -259,36 +298,36 @@
                INAKTIV = neutrale Panel-Farbe mit gedämpfter Schrift.
                Gilt identisch in Dark- und Light-Mode, nur die konkreten
                Farbwerte passen sich pro Theme an. */
-            --toggle-active-bg: #007acc;
+            --toggle-active-bg: var(--ember);
             --toggle-active-text: #ffffff;
-            --toggle-active-border: #007acc;
-            --toggle-inactive-bg: #3a3a3a;
-            --toggle-inactive-text: #aaaaaa;
-            --toggle-inactive-border: #4a4a4a;
-            --toggle-inactive-hover-bg: #4a4a4a;
-            --toggle-inactive-hover-text: #ffffff;
+            --toggle-active-border: var(--ember);
+            --toggle-inactive-bg: var(--bg-surface-2);
+            --toggle-inactive-text: var(--text-muted);
+            --toggle-inactive-border: var(--border-strong);
+            --toggle-inactive-hover-bg: #332e3d;
+            --toggle-inactive-hover-text: var(--text);
 
             /* Einheitliches Eingabefeld-System: JEDES Eingabefeld
                (Text-Input, Textarea, Select) ist permanent umrandet -
                nicht erst bei Fokus. Fokus hebt die Umrandung nur farblich
                hervor. Gilt identisch in Dark- und Light-Mode, siehe
                "PURE LIGHT MODE" weiter unten für die hellen Werte. */
-            --input-border: #5a5f66;
-            --input-border-focus: #4aa3ff;
-            --input-focus-ring: rgba(74, 163, 255, .25);
+            --input-border: var(--border-strong);
+            --input-border-focus: var(--ember);
+            --input-focus-ring: var(--ember-glow);
         }
         /* Light-Theme-Variablen werden weiter unten an EINER zentralen
            Stelle definiert (Abschnitt "PURE LIGHT MODE"), damit es hier
            keine zwei widersprüchlichen Wertesätze mehr gibt. */
         body.light-theme {
-            --toggle-active-bg: #0969da;
+            --toggle-active-bg: var(--ember);
             --toggle-active-text: #ffffff;
-            --toggle-active-border: #0969da;
+            --toggle-active-border: var(--ember);
             --toggle-inactive-bg: #ffffff;
-            --toggle-inactive-text: #4b5563;
-            --toggle-inactive-border: #d0d7de;
-            --toggle-inactive-hover-bg: #eef1f4;
-            --toggle-inactive-hover-text: #111827;
+            --toggle-inactive-text: #5c5866;
+            --toggle-inactive-border: #dcdee3;
+            --toggle-inactive-hover-bg: #f3f1ee;
+            --toggle-inactive-hover-text: #18151e;
         }
         body.light-theme { background: var(--bg); color: var(--text); }
         body.light-theme #sidebar,
@@ -303,99 +342,128 @@
         body.light-theme #sidebar input,
         body.light-theme #sidebar button { background: var(--panel2); color: var(--text); border-color: var(--border); }
 
-        #save-status { font-size: 11px; color: #8bc34a; min-width: 82px; text-align: right; }
+        #save-status { font-size: 11px; color: var(--success); min-width: 82px; text-align: right; font-weight: 600; }
         #project-home-btn { font-size: 12px; }
         #file-tree { display:none; }
-        .project-files { border-top:1px solid var(--border); margin-top:5px; padding-top:7px; }
-        .project-files-title { font-size:11px; color:var(--muted); margin-bottom:4px; }
-        .file-tree-item { padding:5px 7px; border-radius:4px; cursor:pointer; font-size:12px; color:#ccc; }
+        .project-files { border-top:1px solid var(--border); margin-top:5px; padding-top:10px; }
+        .project-files-title { font-size:10px; color:var(--muted); margin-bottom:6px; letter-spacing:.04em; }
+        .file-tree-item { padding:6px 8px; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
         .file-jump-highlight {
             outline: 2px solid var(--input-border-focus);
             outline-offset: -2px;
             transition: outline-color .3s ease;
         }
-        .file-tree-item:hover, .file-tree-item.active { background:#37373d; color:#fff; }
-        body.light-theme .file-tree-item { color:#555; }
-        body.light-theme .file-tree-item:hover, body.light-theme .file-tree-item.active { background:#ddd; color:#111; }
+        .file-tree-item:hover, .file-tree-item.active { background:var(--bg-surface-2); color:var(--text); }
+        body.light-theme .file-tree-item { color:#5c5866; }
+        body.light-theme .file-tree-item:hover, body.light-theme .file-tree-item.active { background:#f3f1ee; color:#18151e; }
 
-        #home-screen { position:absolute; inset:0; z-index:200; background:var(--bg); display:none; overflow:auto; }
+        /* ===== STARTSEITE: der eine bewusste "Hero"-Moment der App -
+           eine warme Glut hinter dem Wortmark, wie ein Schmiedefeuer. ===== */
+        #home-screen { position:absolute; inset:0; z-index:200; background:var(--bg-canvas); display:none; overflow:auto; }
         .lang-toggle-btn {
             position: absolute;
-            top: 18px;
-            right: 22px;
-            background: #4a4a4a;
-            color: #fff;
-            border: 1px solid #555;
-            padding: 7px 14px;
-            border-radius: 6px;
+            top: 20px;
+            right: 24px;
+            background: var(--bg-surface-2);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            padding: 8px 15px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
+            z-index: 2;
         }
-        .lang-toggle-btn:hover { background: #5a5a5a; }
+        .lang-toggle-btn:hover { border-color: var(--ember); }
         body.light-theme .lang-toggle-btn {
             background: #ffffff;
-            color: #1f2328;
-            border-color: #d0d7de;
+            color: var(--text);
+            border-color: var(--border-strong);
         }
-        body.light-theme .lang-toggle-btn:hover { background: #f0f3f6; }
+        body.light-theme .lang-toggle-btn:hover { border-color: var(--ember); }
         #home-screen.active { display:block; }
-        .home-inner { max-width:1000px; margin:0 auto; padding:55px 30px; }
-        .home-logo { font-size:42px; font-weight:800; letter-spacing:-1px; margin-bottom:8px; }
-        .home-subtitle { color:var(--muted); margin-bottom:28px; }
-        .home-actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; margin-bottom:30px; }
-        .home-card { border:1px solid var(--border); background:var(--panel); border-radius:10px; padding:24px; cursor:pointer; transition:.15s; }
-        .home-card:hover { border-color:var(--accent); transform:translateY(-2px); }
-        .home-card h3 { margin:0 0 8px; }
-        .home-card p { color:var(--muted); font-size:13px; line-height:1.5; }
-        #recent-projects { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
-        .recent-item { background:var(--panel); border:1px solid var(--border); padding:12px; border-radius:7px; cursor:pointer; }
-        .recent-item:hover { border-color:var(--accent); }
-
-        #project-modal, #command-palette, #search-modal {
-            position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center;
-            background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
+        .home-hero {
+            position: relative;
+            padding: 96px 30px 20px;
+            text-align: center;
+            overflow: hidden;
         }
-        #project-modal.open, #command-palette.open, #search-modal.open { display:flex; }
-        .modal-card { width:min(560px,92vw); background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:22px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
-        .modal-card h2 { margin-bottom:16px; }
+        .home-hero::before {
+            content: "";
+            position: absolute;
+            top: -180px; left: 50%;
+            width: 640px; height: 420px;
+            transform: translateX(-50%);
+            background: radial-gradient(closest-side, var(--ember-glow), transparent 72%);
+            filter: blur(6px);
+            pointer-events: none;
+            animation: emberBreathe 6s ease-in-out infinite;
+        }
+        body.light-theme .home-hero::before { opacity: .5; }
+        @keyframes emberBreathe {
+            0%, 100% { opacity: .55; transform: translateX(-50%) scale(1); }
+            50%      { opacity: .85; transform: translateX(-50%) scale(1.06); }
+        }
+        .home-inner { max-width:920px; margin:0 auto; padding:0 30px 55px; position: relative; }
+        .home-logo { font-family: var(--font-display); font-size:46px; font-weight:700; letter-spacing:-0.02em; margin-bottom:10px; position: relative; }
+        .home-subtitle { color:var(--muted); margin-bottom:36px; font-size: 15px; }
+        .home-hero .home-logo, .home-hero .home-subtitle { position: relative; }
+        .home-actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; margin-bottom:38px; text-align: left; }
+        .home-card { border:1px solid var(--border); background:var(--bg-surface); border-radius:var(--radius-lg); padding:26px; cursor:pointer; transition: border-color .15s ease, transform .15s ease; }
+        .home-card:hover { border-color:var(--ember); transform:translateY(-3px); }
+        .home-card h3 { margin:0 0 8px; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+        .home-card p { color:var(--muted); font-size:13px; line-height:1.55; }
+        #home-recent-title { text-align: left; font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--text-muted); }
+        #recent-projects { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; text-align: left; }
+        .recent-item { background:var(--bg-surface); border:1px solid var(--border); padding:13px; border-radius:var(--radius-md); cursor:pointer; font-size: 13px; transition: border-color .15s ease; }
+        .recent-item:hover { border-color:var(--ember); }
+
+        #project-modal, #command-palette, #search-modal, #import-export-modal {
+            position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center;
+            background:rgba(10,8,12,.7); backdrop-filter:blur(3px);
+        }
+        #project-modal.open, #command-palette.open, #search-modal.open, #import-export-modal.open { display:flex; }
+        .modal-card { width:min(560px,92vw); background:var(--bg-surface); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; box-shadow:0 24px 70px rgba(0,0,0,.5); }
+        .modal-card h2 { margin-bottom:16px; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
         .modal-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
         .modal-close-btn {
-            background: #4a4a4a;
-            color: #fff;
-            border: 1px solid #555;
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
+            background: var(--bg-surface-2);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             line-height: 1;
             cursor: pointer;
             flex-shrink: 0;
         }
-        .modal-close-btn:hover { background: #5a5a5a; }
+        .modal-close-btn:hover { border-color: var(--ember); }
         body.light-theme .modal-close-btn {
             background: #ffffff;
-            color: #1f2328;
-            border-color: #d0d7de;
+            color: var(--text);
+            border-color: var(--border-strong);
         }
-        body.light-theme .modal-close-btn:hover { background: #f0f3f6; }
+        body.light-theme .modal-close-btn:hover { border-color: var(--ember); }
         .modal-row { margin-bottom:14px; }
-        .modal-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
-        .modal-row input, .modal-row select { width:100%; padding:10px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:5px; }
+        .modal-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight: 600; }
+        .modal-row input, .modal-row select { width:100%; padding:10px 11px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); }
         .type-choice { display:flex; gap:8px; }
-        .type-choice button { flex:1; padding:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:6px; cursor:pointer; }
-        .type-choice button.active { border-color:var(--accent); background:rgba(0,122,204,.18); }
-        .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
-        .modal-actions button { padding:9px 15px; border:0; border-radius:5px; cursor:pointer; }
-        .primary-btn { background:var(--accent); color:#fff; }
-        .secondary-btn { background:var(--panel2); color:var(--text); }
+        .type-choice button { flex:1; padding:12px; border:1px solid var(--border); background:var(--bg-inset); color:var(--text); border-radius:var(--radius-sm); cursor:pointer; font-weight: 600; }
+        .type-choice button.active { border-color:var(--ember); background:var(--ember-glow); }
+        .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+        .modal-actions button { padding:9px 16px; border:1px solid transparent; border-radius:var(--radius-sm); cursor:pointer; font-weight: 600; }
+        .primary-btn { background:var(--ember); color:#ffffff; }
+        .primary-btn:hover { background:var(--ember-dim); color: #fff; }
+        .secondary-btn { background:var(--bg-surface-2); color:var(--text); border-color: var(--border-strong); }
+        .secondary-btn:hover { border-color: var(--ember); }
 
-        #command-input, #search-input-modal { width:100%; padding:12px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; font-family:monospace; }
+        #command-input { width:100%; padding:12px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-mono); }
         #command-list { margin-top:10px; max-height:330px; overflow:auto; }
-        .command-item { padding:10px; border-radius:5px; cursor:pointer; }
-        .command-item:hover { background:var(--panel2); }
+        .command-item { padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size: 13px; }
+        .command-item:hover { background:var(--bg-surface-2); }
         .search-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .search-grid input { padding:9px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:5px; }
+        .search-grid input { padding:9px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); }
         .search-result { margin-top:10px; max-height:250px; overflow:auto; font-size:12px; color:var(--muted); }
 
         /* =========================================================
@@ -411,6 +479,7 @@
         textarea,
         select {
             border: 1px solid var(--input-border) !important;
+            border-radius: var(--radius-sm);
         }
         input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
         textarea:focus,
@@ -424,14 +493,15 @@
         @media (max-width: 760px) {
             #sidebar { width:190px; }
             .home-actions { grid-template-columns:1fr; }
-            .home-inner { padding:35px 18px; }
+            .home-hero { padding: 60px 18px 10px; }
+            .home-inner { padding:0 18px 35px; }
             .home-logo { font-size:32px; }
             #web-tab .editors-column { width:100% !important; }
             #web-tab .col-divider { display:none !important; }
             #web-tab .preview-container { display:none; }
             #mobile-file-tabs { display:flex; background:var(--panel); border-bottom:1px solid var(--border); }
             #mobile-file-tabs button { flex:1; padding:8px; border:0; background:transparent; color:var(--muted); }
-            #mobile-file-tabs button.active { color:#fff; background:var(--accent); }
+            #mobile-file-tabs button.active { color:var(--toggle-active-text); background:var(--accent); }
             .editor-box.mobile-hidden { display:none !important; }
             .action-container .action-btn:nth-child(1), .action-container .action-btn:nth-child(2) { display:none; }
             .preview-header-right .icon-btn { display:none; }
@@ -441,22 +511,36 @@
     
         /* =========================================================
            PURE LIGHT MODE
+           Bewusst NICHT das inzwischen übliche warme Creme-Beige, sondern
+           ein klares, kühles Neutral - wie eine helle Werkstatt bei
+           Tageslicht. Der Glut-Akzent bleibt derselbe wie im Dark Mode,
+           nur etwas kräftiger/dunkler für genug Kontrast auf Weiß.
            ========================================================= */
         body.light-theme {
-            --bg: #f4f6f8;
-            --panel: #ffffff;
-            --panel2: #eef1f4;
-            --border: #d6dbe1;
-            --text: #1f2328;
-            --muted: #68717c;
-            --accent: #0969da;
+            --bg-canvas: #f5f6f8;
+            --bg-surface: #ffffff;
+            --bg-surface-2: #eef0f3;
+            --bg-inset: #edeff2;
+            --border: #dde1e6;
+            --border-strong: #c7cdd4;
+            --text: #1b1a1f;
+            --text-muted: #68717c;
+
+            --ember: #2f6fe0;
+            --ember-dim: #1f52ad;
+            --ember-glow: rgba(47, 111, 224, .14);
+
+            --bg: var(--bg-canvas);
+            --panel: var(--bg-surface);
+            --panel2: var(--bg-surface-2);
+            --muted: var(--text-muted);
+            --accent: var(--ember);
             --success: #18864b;
-            --danger: #d1242f;
-            --input-border: #d0d7de;
-            --input-border-focus: #0969da;
-            --input-focus-ring: rgba(9, 105, 218, .12);
-            background: #f4f6f8 !important;
-            color: #1f2328 !important;
+            --input-border: var(--border-strong);
+            --input-border-focus: var(--ember);
+            --input-focus-ring: var(--ember-glow);
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
         }
 
         body.light-theme,
@@ -469,27 +553,20 @@
         body.light-theme .editor-header,
         body.light-theme .restore-bar,
         body.light-theme .preview-header,
-        body.light-theme .js-console-header,
-        body.light-theme .terminal-header,
-        body.light-theme .tab-bar,
-        body.light-theme .action-bar,
-        body.light-theme .python-toolbar {
+        body.light-theme .js-console-header {
             background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d6dbe1 !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
         }
 
         body.light-theme #main,
-        body.light-theme .main-content,
         body.light-theme .editor-container,
         body.light-theme .editors-column,
         body.light-theme #web-tab,
         body.light-theme #python-tab,
-        body.light-theme .preview-container,
-        body.light-theme .console-container,
-        body.light-theme .terminal-container {
-            background: #f4f6f8 !important;
-            color: #1f2328 !important;
+        body.light-theme .preview-container {
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
         }
 
         /* Alle normalen Eingabefelder */
@@ -497,9 +574,9 @@
         body.light-theme textarea,
         body.light-theme select,
         body.light-theme button:not(.primary-btn):not(#reset-web-btn):not(#reset-py-btn):not(#run-py-btn):not(.action-btn):not(.active):not(.active-tab) {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #cfd5dc !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme input::placeholder,
@@ -510,45 +587,38 @@
         body.light-theme input:focus,
         body.light-theme textarea:focus,
         body.light-theme select:focus {
-            border-color: #0969da !important;
-            outline: 2px solid rgba(9,105,218,.12) !important;
+            border-color: var(--ember) !important;
+            outline: 2px solid var(--ember-glow) !important;
         }
 
         /* Sidebar */
         body.light-theme #sidebar input,
-        body.light-theme #sidebar button,
-        body.light-theme #project-search,
-        body.light-theme .search-input {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d0d7de !important;
+        body.light-theme #sidebar button {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme #sidebar h3,
-        body.light-theme #sidebar label,
-        body.light-theme #sidebar .project-filter,
-        body.light-theme #sidebar .muted {
-            color: #59636e !important;
+        body.light-theme #sidebar label {
+            color: var(--text-muted) !important;
         }
 
         body.light-theme #sidebar button:hover {
-            background: #f0f3f6 !important;
+            background: var(--bg-surface-2) !important;
         }
 
         /* Projektliste / Dateibaum */
         body.light-theme #project-list li,
-        body.light-theme .project-item,
         body.light-theme .file-tree-item {
             color: #30363d !important;
         }
 
         body.light-theme #project-list li:hover,
         body.light-theme #project-list li.active,
-        body.light-theme .project-item:hover,
-        body.light-theme .project-item.active,
         body.light-theme .file-tree-item:hover,
         body.light-theme .file-tree-item.active {
-            background: #e9eef3 !important;
+            background: var(--bg-surface-2) !important;
             color: #111827 !important;
         }
 
@@ -556,27 +626,76 @@
         body.light-theme .icon-btn,
         body.light-theme .copy-btn {
             color: #3f4852 !important;
-            background: #ffffff !important;
-            border-color: #d0d7de !important;
+            background: var(--bg-surface) !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme .icon-btn:hover,
         body.light-theme .copy-btn:hover {
-            background: #eef1f4 !important;
+            background: var(--bg-surface-2) !important;
             color: #111827 !important;
+        }
+
+        /* Live-Vorschau Pause/Play bleibt in beiden Themes blau */
+        /* Pause/Play-Icon: in beiden Themes exakt dieselbe blaue Farbe. */
+        .preview-pause-btn,
+        .preview-pause-btn:hover,
+        .preview-pause-btn.active,
+        .preview-pause-btn.active:hover,
+        body.light-theme .preview-pause-btn,
+        body.light-theme .preview-pause-btn:hover,
+        body.light-theme .preview-pause-btn.active,
+        body.light-theme .preview-pause-btn.active:hover {
+            color: var(--ember) !important;
+        }
+        /* Sprachabhängiger Tooltip für die Web-Pause-Schaltfläche.
+           Kein natives title-Tooltip mehr, damit nach einem Sprachwechsel
+           garantiert immer der aktuelle Text angezeigt wird. */
+        #preview-pause-btn[data-preview-tooltip] {
+            position: relative;
+        }
+        #preview-pause-btn[data-preview-tooltip]::after {
+            content: attr(data-preview-tooltip);
+            position: absolute;
+            top: calc(100% + 7px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            padding: 5px 8px;
+            border-radius: 3px;
+            background: #1f2937;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.2;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .08s ease;
+        }
+        #preview-pause-btn[data-preview-tooltip]:hover::after,
+        #preview-pause-btn[data-preview-tooltip]:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #preview-pause-icon {
+            color: var(--ember) !important;
+            stroke: var(--ember) !important;
         }
 
         /* .action-btn (↩ ↪ ✨ Formatieren, 🔎 Suchen, ⌘ Command, 🌓 Theme,
            ⛶ Editor) im selben neutralen Stil wie die Sidebar-Buttons
            "Neues Projekt", "Speichern" etc. (.colored-sidebar-btn). */
         body.light-theme .action-btn {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d0d7de !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
         }
         body.light-theme .action-btn:hover {
-            background: #f0f3f6 !important;
-            color: #1f2328 !important;
+            border-color: var(--ember) !important;
+            color: var(--text) !important;
         }
 
         /* body.light-theme .tab-btn.active ist jetzt über die
@@ -590,12 +709,12 @@
         body.light-theme .CodeMirror-scroll,
         body.light-theme .CodeMirror-sizer,
         body.light-theme .CodeMirror-lines {
-            background: #ffffff !important;
+            background: var(--bg-inset) !important;
             color: #24292f !important;
         }
 
         body.light-theme .CodeMirror-gutters {
-            border-right: 1px solid #e1e5ea !important;
+            border-right: 1px solid var(--border) !important;
         }
 
         body.light-theme .CodeMirror-linenumber {
@@ -603,12 +722,12 @@
         }
 
         body.light-theme .CodeMirror-cursor {
-            border-left-color: #24292f !important;
+            border-left-color: var(--ember) !important;
         }
 
         body.light-theme .CodeMirror-selected,
         body.light-theme .CodeMirror-focused .CodeMirror-selected {
-            background: #cfe8ff !important;
+            background: var(--ember-glow) !important;
         }
 
         body.light-theme .CodeMirror-activeline-background {
@@ -617,151 +736,136 @@
 
         /* Python Terminal */
         body.light-theme #python-output,
-        body.light-theme #python-input,
-        body.light-theme .terminal-output,
-        body.light-theme .terminal-input,
-        body.light-theme #python-input-container {
-            background: #ffffff !important;
+        body.light-theme #python-input {
+            background: var(--bg-inset) !important;
             color: #24292f !important;
-            border-color: #d6dbe1 !important;
+            border-color: var(--border) !important;
         }
 
         body.light-theme #python-input {
-            caret-color: #24292f !important;
+            caret-color: var(--ember) !important;
         }
+        body.light-theme #python-input-prompt { color: var(--ember) !important; }
 
         /* Restore / Import / Export-Bereich */
         body.light-theme .restore-bar,
-        body.light-theme .restore-bar *,
-        body.light-theme .import-export,
-        body.light-theme .import-export *,
-        body.light-theme .export-container,
-        body.light-theme .import-container {
+        body.light-theme .restore-bar * {
             color: #30363d !important;
         }
 
-        body.light-theme .restore-bar button,
-        body.light-theme .import-export button,
-        body.light-theme .export-container button,
-        body.light-theme .import-container button {
-            background: #ffffff !important;
+        body.light-theme .restore-bar button {
+            background: var(--bg-surface) !important;
             color: #30363d !important;
-            border: 1px solid #cfd5dc !important;
+            border: 1px solid var(--border-strong) !important;
         }
 
-        body.light-theme .restore-bar button:hover,
-        body.light-theme .import-export button:hover,
-        body.light-theme .export-container button:hover,
-        body.light-theme .import-container button:hover {
-            background: #eef1f4 !important;
+        body.light-theme .restore-bar button:hover {
+            background: var(--bg-surface-2) !important;
         }
 
-        body.light-theme .restore-bar input,
-        body.light-theme .import-export input,
-        body.light-theme .import-export textarea {
-            background: #ffffff !important;
+        body.light-theme .restore-bar input {
+            background: var(--bg-surface) !important;
             color: #24292f !important;
-            border-color: #cfd5dc !important;
+            border-color: var(--border-strong) !important;
         }
 
         /* Dialoge / Modals */
         body.light-theme #project-modal,
         body.light-theme #command-palette,
-        body.light-theme #search-modal {
-            background: rgba(31,35,40,.28) !important;
+        body.light-theme #search-modal,
+        body.light-theme #import-export-modal {
+            background: rgba(27,26,31,.35) !important;
         }
 
         body.light-theme .modal-card {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d0d7de !important;
-            box-shadow: 0 18px 50px rgba(31,35,40,.18) !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+            box-shadow: 0 20px 55px rgba(27,26,31,.14) !important;
         }
 
         body.light-theme .modal-card h2,
         body.light-theme .modal-card h3,
         body.light-theme .modal-card label {
-            color: #1f2328 !important;
+            color: var(--text) !important;
         }
 
         body.light-theme .modal-row input,
         body.light-theme .modal-row select,
         body.light-theme #command-input,
-        body.light-theme #search-input-modal,
         body.light-theme #search-term,
         body.light-theme #replace-term {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #cfd5dc !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme .secondary-btn {
-            background: #f3f4f6 !important;
+            background: var(--bg-surface-2) !important;
             color: #24292f !important;
-            border: 1px solid #d0d7de !important;
+            border: 1px solid var(--border-strong) !important;
         }
 
         body.light-theme .secondary-btn:hover {
-            background: #e9ecef !important;
+            border-color: var(--ember) !important;
         }
 
         body.light-theme .type-choice button {
-            background: #ffffff !important;
+            background: var(--bg-surface) !important;
             color: #30363d !important;
-            border-color: #cfd5dc !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme .type-choice button.active {
-            background: #e8f1fb !important;
-            color: #0969da !important;
-            border-color: #9cc3e8 !important;
+            background: var(--ember-glow) !important;
+            color: var(--ember-dim) !important;
+            border-color: var(--ember) !important;
         }
 
         body.light-theme .command-item:hover {
-            background: #eef1f4 !important;
+            background: var(--bg-surface-2) !important;
         }
 
         /* Startseite */
         body.light-theme #home-screen {
-            background: #f4f6f8 !important;
-            color: #1f2328 !important;
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
         }
 
         body.light-theme .home-card,
         body.light-theme .recent-item {
-            background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d6dbe1 !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
         }
 
         body.light-theme .home-card:hover,
         body.light-theme .recent-item:hover {
-            border-color: #0969da !important;
-            box-shadow: 0 5px 18px rgba(31,35,40,.08);
+            border-color: var(--ember) !important;
+            box-shadow: 0 6px 20px rgba(27,26,31,.07);
         }
 
         body.light-theme .home-subtitle,
         body.light-theme .home-card p {
-            color: #68717c !important;
+            color: var(--text-muted) !important;
         }
 
         /* Select-Optionen */
         body.light-theme option {
-            background: #ffffff !important;
-            color: #1f2328 !important;
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
         }
 
         /* Trenner */
         body.light-theme .col-divider,
-        body.light-theme .editor-divider,
         body.light-theme hr {
-            background: #d6dbe1 !important;
-            border-color: #d6dbe1 !important;
+            background: var(--border) !important;
+            border-color: var(--border) !important;
         }
 
         /* Speichern-Anzeige */
         body.light-theme #save-status {
-            color: #18864b !important;
+            color: var(--success) !important;
         }
 
     
@@ -772,40 +876,37 @@
             z-index: 1000;
             width: 34px;
             height: 34px;
-            border: 1px solid #3d434a;
-            border-radius: 7px;
-            background: #252526;
-            color: #fff;
-            font-size: 25px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            color: var(--text);
+            font-size: 22px;
             line-height: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        #browser-back-btn:hover { background: #333; }
+        #browser-back-btn:hover { border-color: var(--ember); }
         body.light-theme #browser-back-btn {
             background: #fff !important;
-            color: #24292f !important;
-            border-color: #d0d7de !important;
-            box-shadow: 0 1px 3px rgba(31,35,40,.08);
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+            box-shadow: 0 1px 3px rgba(27,26,31,.06);
         }
         body.light-theme #browser-back-btn:hover {
-            background: #f3f4f6 !important;
+            border-color: var(--ember) !important;
         }
 
         /* Projektliste bleibt im Light Mode dauerhaft hell. */
         body.light-theme #project-list,
-        body.light-theme #project-list li,
-        body.light-theme #project-list .project-item {
-            background: #ffffff !important;
+        body.light-theme #project-list li {
+            background: transparent !important;
             color: #24292f !important;
         }
         body.light-theme #project-list li:hover,
-        body.light-theme #project-list li.active,
-        body.light-theme #project-list .project-item:hover,
-        body.light-theme #project-list .project-item.active {
-            background: #eef1f4 !important;
+        body.light-theme #project-list li.active {
+            background: var(--bg-surface-2) !important;
             color: #111827 !important;
         }
 
@@ -847,13 +948,13 @@
         #text-dialog {
             position: fixed; inset: 0; z-index: 700;
             display: none; align-items: center; justify-content: center;
-            background: rgba(0,0,0,.65); backdrop-filter: blur(2px);
+            background: rgba(10,8,12,.7); backdrop-filter: blur(3px);
         }
         #text-dialog.open { display:flex; }
-        body.light-theme #text-dialog { background: rgba(31,35,40,.28) !important; }
+        body.light-theme #text-dialog { background: rgba(27,26,31,.35) !important; }
         body.light-theme #text-dialog .modal-card {
-            background:#fff !important; color:#1f2328 !important;
-            border-color:#d0d7de !important;
+            background:#fff !important; color:var(--text) !important;
+            border-color:var(--border) !important;
         }
 
     
@@ -901,40 +1002,42 @@
         body:not(.light-theme) .console-entry.error .console-icon { color:#ff7b72; }
 
     
-        /* Sidebar-Buttons: in beiden Themes neutral (wie der Light-Mode-Look),
-           also keine farbigen Hintergründe mehr, nur fette Schrift. */
+        /* Sidebar-Buttons: neutral in beiden Themes, EINE Ausnahme:
+           "+ Neues Projekt" ist die primäre Aktion der Sidebar und bekommt
+           als einziger Button die Akzentfarbe (Glut-Orange gefüllt) -
+           statt dass (wie vorher) alle Buttons gleich aussehen. */
         #sidebar > h3 {
-            margin-left: 40px !important;
+            margin-top: 2px;
+            margin-left: 42px !important;
+            padding-left: 0;
             min-height: 34px;
             display: flex;
             align-items: center;
+            font-family: var(--font-display);
+            font-weight: 600;
         }
         .colored-sidebar-btn {
             font-weight: 600 !important;
-            background: #4a4a4a !important;
-            color: #fff !important;
-            border: 1px solid #555 !important;
+            background: var(--bg-surface-2) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm) !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+        .btn-icon { width: 14px; height: 14px; flex-shrink: 0; }
         .colored-sidebar-btn:hover {
-            background: #5a5a5a !important;
+            border-color: var(--ember) !important;
         }
         body.light-theme .colored-sidebar-btn {
             background: #ffffff !important;
-            color: #1f2328 !important;
-            border-color: #d0d7de !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
         }
         body.light-theme .colored-sidebar-btn:hover {
-            background: #f0f3f6 !important;
-        }
-
-        /* Backup import/export buttons also keep a clear light-mode appearance. */
-        body.light-theme .backup-btn {
-            background:#ffffff !important;
-            color:#30363d !important;
-            border:1px solid #cfd5dc !important;
-        }
-        body.light-theme .backup-btn:hover {
-            background:#eef1f4 !important;
+            border-color: var(--ember) !important;
         }
 
         /* .filter-btn / .filter-btn.active sind jetzt über die
@@ -945,7 +1048,6 @@
         /* Back arrow must never overlap the CodeForge title. */
         #browser-back-btn { left:8px !important; }
         #sidebar { padding-top:15px !important; }
-        #sidebar > h3 { padding-left:18px; }
 
         /* Wenn die Sidebar eingeklappt ist, rutscht die Top-Bar bis an den
            linken Rand und der Sidebar-Toggle (☰) landet genau unter dem
@@ -959,9 +1061,9 @@
 
         /* The actual console element in this app is #js-console-output. */
         body.light-theme #js-console-output {
-            background:#ffffff !important;
+            background:var(--bg-inset) !important;
             color:#24292f !important;
-            border-color:#d6dbe1 !important;
+            border-color:var(--border) !important;
         }
         body.light-theme .console-entry {
             border-bottom-color: rgba(0,0,0,.08) !important;
@@ -970,35 +1072,24 @@
 
         /* Console button */
         #clear-console-btn {
-            background:#f3f4f6 !important;
-            color:#24292f !important;
-            border:1px solid #cfd5dc !important;
+            background:var(--bg-surface-2) !important;
+            color:var(--text) !important;
+            border:1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm) !important;
             cursor:pointer !important;
         }
-        #clear-console-btn:hover { background:#e5e7eb !important; }
-        body:not(.light-theme) #clear-console-btn {
-            background:#3a3a3a !important;
-            color:#fff !important;
-            border-color:#555 !important;
-        }
+        #clear-console-btn:hover { border-color: var(--ember) !important; }
 
     
         #confirm-dialog {
             position:fixed; inset:0; z-index:710; display:none; align-items:center; justify-content:center;
-            background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
+            background:rgba(10,8,12,.7); backdrop-filter:blur(3px);
         }
         #confirm-dialog.open { display:flex; }
-        body.light-theme #confirm-dialog { background:rgba(31,35,40,.28) !important; }
+        body.light-theme #confirm-dialog { background:rgba(27,26,31,.35) !important; }
 
-    
-        #sidebar > h3 {
-            margin-top: 2px !important;
-            margin-left: 42px !important;
-            padding-left: 0 !important;
-        }
         @media (max-width:760px) {
             #browser-back-btn { left:6px !important; top:6px !important; }
-            #sidebar > h3 { margin-left:42px !important; }
         }
 
     
@@ -1028,12 +1119,13 @@
             gap: 10px;
             max-width: min(420px, 88vw);
             padding: 11px 16px;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             font-size: 13px;
             font-weight: 600;
+            font-family: var(--font-ui);
             color: #fff;
-            background: #3a3a3a;
-            border: 1px solid #555;
+            background: var(--bg-surface-2);
+            border: 1px solid var(--border-strong);
             box-shadow: 0 8px 24px rgba(0,0,0,.35);
             cursor: pointer;
             opacity: 0;
@@ -1043,17 +1135,17 @@
         .toast.toast-show { opacity: 1; transform: translateY(0); }
         .toast.toast-hide { opacity: 0; transform: translateY(-10px); }
         .toast .toast-icon { flex-shrink: 0; font-size: 15px; }
-        .toast.toast-success { background: #14532d; border-color: #18864b; }
-        .toast.toast-warning { background: #4a3a08; border-color: #9a6700; }
-        .toast.toast-error   { background: #4a1116; border-color: #d1242f; }
+        .toast.toast-success { background: #1c3d2c; border-color: #57b787; }
+        .toast.toast-warning { background: #453723; border-color: #e8b339; }
+        .toast.toast-error   { background: #45232a; border-color: #f0555a; }
 
         body.light-theme .toast {
-            color: #1f2328;
-            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            color: var(--text);
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
         }
-        body.light-theme .toast.toast-success { background: #d9f2e3; border-color: #18864b; }
+        body.light-theme .toast.toast-success { background: #dcf3e6; border-color: #18864b; }
         body.light-theme .toast.toast-warning { background: #fdf0d5; border-color: #9a6700; }
-        body.light-theme .toast.toast-error   { background: #fde3e3; border-color: #d1242f; }
+        body.light-theme .toast.toast-error   { background: #fbe2e2; border-color: #d1242f; }
 
         /* Sidebar-Aktionsbuttons bleiben im Light Mode neutral (weiß/grau,
            fette Schrift) statt farbig – siehe .colored-sidebar-btn oben. */
@@ -1065,49 +1157,33 @@
             col-divider = Trenner zwischen Editoren und Vorschau)
            ========================================================= */
         .col-divider,
-        .row-divider,
-        .editor-divider,
-        .resize-handle,
-        .splitter {
-            background: #4a4a4a !important;
+        .row-divider {
+            background: var(--border-strong) !important;
             border: 0 !important;
             opacity: .9;
             transition: background .15s, opacity .15s;
         }
         .col-divider:hover,
-        .row-divider:hover,
-        .editor-divider:hover,
-        .resize-handle:hover,
-        .splitter:hover {
-            background: #5a5a5a !important;
+        .row-divider:hover {
+            background: var(--ember) !important;
             opacity: 1;
         }
         /* Im Light Mode: helle, dezente Trenner wie im Live-Vorschau-Bereich */
         body.light-theme .col-divider,
-        body.light-theme .row-divider,
-        body.light-theme .editor-divider,
-        body.light-theme .resize-handle,
-        body.light-theme .splitter {
-            background: #e5e7eb !important;
-            border-color: #e5e7eb !important;
+        body.light-theme .row-divider {
+            background: var(--border) !important;
+            border-color: var(--border) !important;
             opacity: 1 !important;
         }
         body.light-theme .col-divider:hover,
-        body.light-theme .row-divider:hover,
-        body.light-theme .editor-divider:hover,
-        body.light-theme .resize-handle:hover,
-        body.light-theme .splitter:hover {
-            background: #d1d5db !important;
+        body.light-theme .row-divider:hover {
+            background: var(--ember) !important;
         }
 
         /* Gleiche Dicke wie die Trenner zwischen HTML/CSS/JS (.row-divider, 6px) */
         .col-divider {
             width: 6px !important;
             cursor: col-resize !important;
-        }
-        .editor-divider {
-            height: 6px !important;
-            cursor: row-resize !important;
         }
 
     
@@ -1118,35 +1194,36 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            border-radius: var(--radius-sm);
         }
         body.light-theme #close-web-console {
             background: #fff !important;
             color: #24292f !important;
-            border-color: #d0d7de !important;
+            border-color: var(--border-strong) !important;
         }
 
         /* =========================================================
            EINGEBLENDET/AUSGEBLENDET-STATUS DER HTML/CSS/JS/KONSOLE-
-           TOGGLE-BUTTONS (oben in der restore-bar): aktiv = blau,
+           TOGGLE-BUTTONS (oben in der restore-bar): aktiv = Glut-Akzent,
            inaktiv = weiß im Light Mode - identisch zum Dark Mode
-           (dort: aktiv = blau, inaktiv = dunkelgrau).
+           (dort: aktiv = Glut-Akzent, inaktiv = dunkelgrau).
            ========================================================= */
         body.light-theme .restore-btn.active-tab {
-            background: #0969da !important;
+            background: var(--ember) !important;
             color: #ffffff !important;
-            border-color: #0969da !important;
+            border-color: var(--ember) !important;
         }
         body.light-theme .restore-btn.active-tab:hover {
-            background: #0a58ca !important;
+            background: var(--ember-dim) !important;
             color: #ffffff !important;
         }
         body.light-theme .restore-btn:not(.active-tab) {
             background: #ffffff !important;
             color: #4b5563 !important;
-            border-color: #d0d7de !important;
+            border-color: var(--border-strong) !important;
         }
         body.light-theme .restore-btn:not(.active-tab):hover {
-            background: #eef1f4 !important;
+            background: var(--bg-surface-2) !important;
             color: #111827 !important;
         }
 
@@ -1212,20 +1289,25 @@
         }
 
         #web-tab .editors-column,
-        #web-tab .preview-container,
-        #web-tab .preview-panel,
-        #web-tab .live-preview {
+        #web-tab .preview-container {
             min-height: 0;
         }
 
-        #web-tab .preview-container,
-        #web-tab .preview-panel,
-        #web-tab .live-preview {
-            display: flex !important;
-            flex-direction: column;
-            flex: 1 1 0;
-            min-width: 0;
-            overflow: hidden;
+        /* Live-Vorschau erzwingt "flex" nur ab Desktop-Breite. Auf Mobile
+           (siehe @media max-width:760px weiter oben) soll die Vorschau
+           komplett ausgeblendet bleiben, solange ein einzelner Editor
+           (HTML/CSS/JS) angezeigt wird - das !important hier hat vorher
+           die mobile display:none-Regel überstimmt und dadurch das
+           Mobile-Layout kaputt gemacht (Vorschau + Editor quetschten sich
+           nebeneinander in die Breite). */
+        @media (min-width: 761px) {
+            #web-tab .preview-container {
+                display: flex !important;
+                flex-direction: column;
+                flex: 1 1 0;
+                min-width: 0;
+                overflow: hidden;
+            }
         }
 
         #web-tab iframe,
@@ -1238,9 +1320,7 @@
             background: #fff;
         }
 
-        body.light-theme #web-tab .preview-container,
-        body.light-theme #web-tab .preview-panel,
-        body.light-theme #web-tab .live-preview {
+        body.light-theme #web-tab .preview-container {
             background: #fff !important;
         }
 
@@ -1256,9 +1336,9 @@
         body.light-theme #python-input-row,
         body.light-theme #python-input,
         body.light-theme #python-input-prompt {
-            background: #ffffff !important;
+            background: var(--bg-inset) !important;
             color: #24292f !important;
-            border-color: #d0d7de !important;
+            border-color: var(--border) !important;
         }
 
         /* .python-terminal Rahmenfarbe kommt jetzt einheitlich aus
@@ -1266,7 +1346,7 @@
            doppelte Definition mehr nötig. */
 
         body.light-theme #python-input {
-            caret-color: #24292f !important;
+            caret-color: var(--ember) !important;
         }
 
         /* Mehrere Python-Eingaben: genug Höhe und saubere Zeilen,
@@ -1295,27 +1375,27 @@
             padding: 2px 0 !important;
         }
 
-        /* Filter: ausgewählter Filter immer deutlich blau,
+        /* Filter: ausgewählter Filter immer deutlich im Akzent,
            nicht ausgewählte Filter weiß – wie im Dark Mode. */
         body.light-theme .type-filter-bar .filter-btn.active,
         body.light-theme #filter-btn-all.active,
         body.light-theme #filter-btn-web.active,
         body.light-theme #filter-btn-python.active {
-            background: #0969da !important;
+            background: var(--ember) !important;
             color: #ffffff !important;
-            border-color: #0969da !important;
+            border-color: var(--ember) !important;
             font-weight: bold !important;
         }
 
         body.light-theme .type-filter-bar .filter-btn:not(.active) {
             background: #ffffff !important;
             color: #4b5563 !important;
-            border-color: #d0d7de !important;
+            border-color: var(--border-strong) !important;
         }
 
         body.light-theme .type-filter-bar .filter-btn:not(.active):hover {
-            background: #eef1f4 !important;
-            color: #1f2328 !important;
+            background: var(--bg-surface-2) !important;
+            color: var(--text) !important;
         }
 
     
@@ -1330,9 +1410,9 @@
         body.light-theme #filter-btn-web.active:hover,
         body.light-theme #filter-btn-python.active,
         body.light-theme #filter-btn-python.active:hover {
-            background: #0969da !important;
+            background: var(--ember) !important;
             color: #ffffff !important;
-            border-color: #0969da !important;
+            border-color: var(--ember) !important;
         }
 
         body.light-theme .type-filter-bar .filter-btn.active *,
@@ -1403,11 +1483,11 @@
         body:not(.light-theme) #python-output,
         body:not(.light-theme) #python-input,
         body:not(.light-theme) #python-input-prompt {
-            color: #ffffff !important;
+            color: var(--text) !important;
         }
 
         body:not(.light-theme) #python-input {
-            caret-color: #ffffff !important;
+            caret-color: var(--ember) !important;
         }
 
     </style>
@@ -1418,9 +1498,11 @@
 
     <div id="home-screen">
         <button id="app-lang-toggle" class="lang-toggle-btn" onclick="toggleAppLang()" title="Sprache wechseln (Deutsch/Englisch)">🇩🇪 Deutsch</button>
-        <div class="home-inner">
+        <div class="home-hero">
             <div class="home-logo">⚡ CodeForge</div>
             <div class="home-subtitle" data-i18n="homeSubtitle">Deine lokale Web- und Python-Entwicklungsumgebung.</div>
+        </div>
+        <div class="home-inner">
             <div class="home-actions">
                 <div class="home-card" onclick="openProjectModal('web')">
                     <h3 data-i18n="homeWebTitle">🌐 Web-Projekt</h3>
@@ -1431,7 +1513,7 @@
                     <p data-i18n="homePyDesc">Python direkt im Browser mit interaktivem Terminal.</p>
                 </div>
             </div>
-            <h3 id="home-recent-title" style="margin-bottom:10px;" data-i18n="homeRecent">Zuletzt geöffnet</h3>
+            <h3 id="home-recent-title" style="margin-bottom:12px;" data-i18n="homeRecent">Zuletzt geöffnet</h3>
             <div id="recent-projects"></div>
         </div>
     </div>
@@ -1520,6 +1602,46 @@
         </div>
     </div>
 
+    <div id="import-export-modal">
+        <div class="modal-card">
+            <div class="modal-header-row">
+                <h2 style="margin-bottom:0;" data-i18n="ieModalTitle">Import / Export</h2>
+                <button class="modal-close-btn" onclick="closeImportExportModal()" title="Schließen" data-i18n-title="close">✕</button>
+            </div>
+
+            <div class="modal-row">
+                <label data-i18n="ieActionLabel">Aktion</label>
+                <div class="type-choice">
+                    <button id="ie-action-export" class="active" onclick="setIEAction('export')" data-i18n="ieExport">Export</button>
+                    <button id="ie-action-import" onclick="setIEAction('import')" data-i18n="ieImport">Import</button>
+                </div>
+            </div>
+
+            <div class="modal-row">
+                <label data-i18n="ieFormatLabel">Dateityp</label>
+                <div class="type-choice">
+                    <button id="ie-format-zip" class="active" onclick="setIEFormat('zip')">ZIP</button>
+                    <button id="ie-format-json" onclick="setIEFormat('json')">JSON</button>
+                </div>
+            </div>
+
+            <div class="modal-row" id="ie-scope-row">
+                <label data-i18n="ieScopeLabel">Umfang</label>
+                <div class="type-choice">
+                    <button id="ie-scope-single" class="active" onclick="setIEScope('single')" data-i18n="ieScopeSingle">Aktuelles Projekt</button>
+                    <button id="ie-scope-all" onclick="setIEScope('all')" data-i18n="ieScopeAll">Alle Projekte (Backup)</button>
+                </div>
+            </div>
+
+            <p id="ie-hint" style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:-4px;margin-bottom:16px;"></p>
+
+            <div class="modal-actions">
+                <button class="secondary-btn" onclick="closeImportExportModal()" data-i18n="cancel">Abbrechen</button>
+                <button class="primary-btn" id="ie-run-btn" onclick="runImportExportAction()" data-i18n="ieRun">Exportieren</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Sidebar -->
     <div id="sidebar">
@@ -1535,16 +1657,11 @@
 
         <input type="text" id="search-input" placeholder="Suchen..." onkeyup="filterProjects()" data-i18n-placeholder="searchPlaceholder">
         <button class="colored-sidebar-btn new-project-btn" onclick="openProjectModal()" data-i18n="newProjectBtn">+ Neues Projekt</button>
-        <button class="colored-sidebar-btn rename-btn" onclick="renameCurrentProject()" data-i18n="renameBtn">✏️ Umbenennen</button>
-        <button class="colored-sidebar-btn delete-btn" onclick="deleteCurrentProject()" data-i18n="deleteBtn">🗑️ Löschen</button>
-        <button class="colored-sidebar-btn zip-btn" onclick="exportCurrentAsZip()" data-i18n="zipExportBtn">📦 ZIP Export</button>
+        <button class="colored-sidebar-btn rename-btn" onclick="renameCurrentProject()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.3a1.6 1.6 0 0 1 2.4 2.4L5.5 12.9l-3 .8.8-3z"/></svg><span data-i18n="renameBtn">Umbenennen</span></button>
+        <button class="colored-sidebar-btn delete-btn" onclick="deleteCurrentProject()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.3 4.5v-1a1 1 0 0 1 1-1h1.4a1 1 0 0 1 1 1v1M4.6 4.5l.5 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.5-8.3"/></svg><span data-i18n="deleteBtn">Löschen</span></button>
+        <button class="colored-sidebar-btn ie-btn" onclick="openImportExportModal()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.8v7M2 7.3l2 2.3 2-2.3"/><path d="M12 13.2v-7M10 8.7l2-2.3 2 2.3"/></svg><span data-i18n="ieBtn">Import / Export</span></button>
 
-        <!-- Backup Buttons -->
-        <div class="backup-bar">
-            <button class="backup-btn" onclick="exportProjects()" title="Projekt(e) als JSON herunterladen" data-i18n="exportBtn" data-i18n-title="exportTitle">📥 Export</button>
-            <button class="backup-btn" onclick="document.getElementById('import-file-input').click()" title="Projekte aus JSON laden" data-i18n="importBtn" data-i18n-title="importTitle">📤 Import</button>
-            <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importProjects(event)">
-        </div>
+        <input type="file" id="import-file-input" style="display: none;" onchange="handleImportFileSelected(event)">
 
         <ul id="project-list"></ul>
 <div class="project-files"><div class="project-files-title" data-i18n="filesLabel">DATEIEN</div><div id="file-tree"></div></div>
@@ -1560,12 +1677,12 @@
             </div>
             
             <div class="action-container">
-                <button class="action-btn" onclick="undoCode()" title="Rückgängig (Undo)" data-i18n-title="undoTitle">↩</button>
-                <button class="action-btn" onclick="redoCode()" title="Wiederherstellen (Redo)" data-i18n-title="redoTitle">↪</button>
-                <button class="action-btn" onclick="formatCurrentCode()" data-i18n="formatBtn">✨ Formatieren</button>
-<button class="action-btn" onclick="openSearchModal()" data-i18n="searchBtnToolbar">🔎 Suchen</button>
-<button class="action-btn" onclick="openCommandPalette()" data-i18n="commandBtn">⌘ Command</button>
-<button class="action-btn" onclick="toggleTheme()" data-i18n="themeBtn">🌓 Theme</button>
+                <button class="action-btn" onclick="undoCode()" title="Rückgängig (Undo)" data-i18n-title="undoTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h7a3 3 0 0 1 0 6H7"/><path d="M6 5 3 8l3 3"/></svg></button>
+                <button class="action-btn" onclick="redoCode()" title="Wiederherstellen (Redo)" data-i18n-title="redoTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H6a3 3 0 0 0 0 6h2"/><path d="M10 5l3 3-3 3"/></svg></button>
+                <button class="action-btn" onclick="formatCurrentCode()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10M3 8h7M3 12h4"/></svg><span data-i18n="formatBtn">Formatieren</span></button>
+<button class="action-btn" onclick="openSearchModal()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.3"/><path d="M13 13l-3-3"/></svg><span data-i18n="searchBtnToolbar">Suchen</span></button>
+<button class="action-btn" onclick="openCommandPalette()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.5" width="12" height="9" rx="1.2"/><path d="M5 6.5l2 1.5-2 1.5M8.3 9.5h2.7"/></svg><span data-i18n="commandBtn">Command</span></button>
+<button class="action-btn" onclick="toggleTheme()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.3"/><path d="M8 2.7a5.3 5.3 0 0 1 0 10.6z" fill="currentColor" stroke="none"/></svg><span data-i18n="themeBtn">Theme</span></button>
 <span id="save-status" data-i18n="savedStatus">✓ Gespeichert</span>
             </div>
         </div>
@@ -1592,7 +1709,7 @@
                             <span style="font-size: 11px; color: #666;">index.html</span>
                         </div>
                         <div class="editor-header-right">
-                            <button class="copy-btn" onclick="copyEditorCode('html', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="copy-btn" onclick="copyEditorCode('html', this)" title="Code kopieren" data-i18n-title="copyCodeTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg><span data-i18n="copyBtn">Kopieren</span></button>
                             <button class="toggle-btn" onclick="toggleBox('html-box')">✕</button>
                         </div>
                     </div>
@@ -1610,7 +1727,7 @@
                             <span style="font-size: 11px; color: #666;">style.css</span>
                         </div>
                         <div class="editor-header-right">
-                            <button class="copy-btn" onclick="copyEditorCode('css', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="copy-btn" onclick="copyEditorCode('css', this)" title="Code kopieren" data-i18n-title="copyCodeTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg><span data-i18n="copyBtn">Kopieren</span></button>
                             <button class="toggle-btn" onclick="toggleBox('css-box')">✕</button>
                         </div>
                     </div>
@@ -1628,7 +1745,7 @@
                             <span style="font-size: 11px; color: #666;">script.js</span>
                         </div>
                         <div class="editor-header-right">
-                            <button class="copy-btn" onclick="copyEditorCode('js', this)" title="Code kopieren" data-i18n="copyBtn" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                            <button class="copy-btn" onclick="copyEditorCode('js', this)" title="Code kopieren" data-i18n-title="copyCodeTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg><span data-i18n="copyBtn">Kopieren</span></button>
                             <button class="toggle-btn" onclick="toggleBox('js-box')">✕</button>
                         </div>
                     </div>
@@ -1646,6 +1763,9 @@
                     <span data-i18n="previewLabel">Preview / Live-Vorschau</span>
                     <div class="preview-header-right">
                         <button id="reset-web-btn" onclick="resetWebPreview()" title="Web-Code komplett neu starten" data-i18n="resetBtn" data-i18n-title="resetWebTitle">↻ Reset</button>
+                        <button id="preview-pause-btn" class="icon-btn preview-pause-btn" onclick="togglePreviewPause()" aria-label="Live-Vorschau pausieren">
+                            <svg id="preview-pause-icon" class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3v10M11 3v10"/></svg>
+                        </button>
                         <button class="icon-btn" onclick="togglePreviewFullscreen()" style="padding: 2px 8px;" data-i18n="fullscreenPreviewBtn">↔ Vollbild</button>
                     </div>
                 </div>
@@ -1667,7 +1787,7 @@
             <div class="py-toolbar">
                 <span class="py-title">main.py</span>
                 <div class="editor-header-right">
-                    <button class="copy-btn" onclick="copyEditorCode('py', this)" title="Code kopieren" data-i18n="copy" data-i18n-title="copyCodeTitle">📋 Kopieren</button>
+                    <button class="copy-btn" onclick="copyEditorCode('py', this)" title="Code kopieren" data-i18n-title="copyCodeTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg><span data-i18n="copy">Kopieren</span></button>
                     <button id="run-py-btn" onclick="runPython()" title="Code ausführen" data-i18n="run" data-i18n-title="runTitle">▶ Code Ausführen</button>
                     <button id="reset-py-btn" onclick="resetPython()" title="Python komplett zurücksetzen" data-i18n="resetBtn" data-i18n-title="resetPyTitle">↻ Reset</button>
                 </div>
@@ -1694,6 +1814,19 @@
         let selectedTypeFilter = "all";
         let autoSaveTimeout = null;
         let lastFocusedEditor = null;
+
+        // Wird beim Befüllen der Editoren (z.B. beim Öffnen eines Projekts)
+        // kurzzeitig auf true gesetzt, damit die einzelnen setValue()-Aufrufe
+        // für html/css/js NICHT jeweils sofort ihren eigenen (noch
+        // unvollständigen) updateWebPreview()-Aufruf auslösen. Vorher liefen
+        // beim Öffnen eines Web-Projekts bis zu 4 iframe-Neuaufbauten in
+        // Millisekunden-Abstand ab (einer pro setValue() mit teils
+        // veralteten Daten, plus der finale korrekte Aufruf) - das konnte
+        // dazu führen, dass die Vorschau unstyled/weiß hängen blieb, weil
+        // z.B. ein per @import geladenes Google Font mitten im mehrfachen
+        // Neuladen unterbrochen wurde. Jetzt läuft beim Öffnen nur noch
+        // GENAU EIN updateWebPreview()-Aufruf, mit den fertigen Daten.
+        let suppressEditorEvents = false;
 
         let cmEditors = {};
 
@@ -1816,10 +1949,10 @@
                 cmEditors[key].on("focus", () => trackFocus(cmEditors[key]));
             });
 
-            cmEditors.html.on("change", () => { updateWebPreview(); triggerAutoSave(); });
-            cmEditors.css.on("change", () => { updateWebPreview(); triggerAutoSave(); });
-            cmEditors.js.on("change", () => { updateWebPreview(); triggerAutoSave(); });
-            cmEditors.py.on("change", () => { triggerAutoSave(); });
+            cmEditors.html.on("change", () => { if (suppressEditorEvents) return; if (!previewPaused) updateWebPreview(); triggerAutoSave(); });
+            cmEditors.css.on("change", () => { if (suppressEditorEvents) return; if (!previewPaused) updateWebPreview(); triggerAutoSave(); });
+            cmEditors.js.on("change", () => { if (suppressEditorEvents) return; if (!previewPaused) updateWebPreview(); triggerAutoSave(); });
+            cmEditors.py.on("change", () => { if (suppressEditorEvents) return; triggerAutoSave(); });
         }
 
         function getActiveEditor() {
@@ -1863,6 +1996,33 @@
         function appendPythonOutput(text) {
             const outputDiv = document.getElementById("python-output");
             outputDiv.textContent += text;
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        // Python-Fehler werden wie Web-Console-Fehler als eigener Eintrag
+        // dargestellt. Dadurch bleibt die normale Terminal-Ausgabe erhalten,
+        // während ein Fehler direkt mit demselben Kopier-Feedback wie in der
+        // Web-Konsole kopiert werden kann.
+        function appendPythonError(message) {
+            const outputDiv = document.getElementById("python-output");
+            if (!outputDiv) return;
+
+            const errorText = String(message);
+            const entry = document.createElement("div");
+            entry.className = "console-entry error python-console-entry";
+            entry.innerHTML = '<span class="console-icon">✗</span><span>' +
+                escapeHtml(errorText).replace(/\n/g, "<br>") +
+                '</span>' +
+                '<button class="copy-btn console-copy-error" type="button" title="' + escapeHtml(t('copyErrorTitle')) + '" data-i18n-title="copyErrorTitle" aria-label="' + escapeHtml(t('copyErrorTitle')) + '" data-i18n-aria="copyErrorTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg></button>';
+
+            const copyBtn = entry.querySelector(".console-copy-error");
+            copyBtn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                copyText(errorText, copyBtn);
+            });
+
+            outputDiv.appendChild(entry);
+            outputDiv.dataset.state = "error";
             outputDiv.scrollTop = outputDiv.scrollHeight;
         }
 
@@ -1935,6 +2095,12 @@
             });
 
             applyAppTranslations();
+
+            const previewPauseBtn = document.getElementById("preview-pause-btn");
+            if (previewPauseBtn) {
+                previewPauseBtn.addEventListener("mouseenter", () => setPreviewPauseButton(previewPaused));
+                previewPauseBtn.addEventListener("focus", () => setPreviewPauseButton(previewPaused));
+            }
         });
 
         // =========================================================
@@ -1955,11 +2121,8 @@
                 noRecentProjects: "Noch keine Projekte geöffnet.",
                 langToggleTitle: "Sprache wechseln (Deutsch/Englisch)",
 
-                confirmTitleDefault: "Bestätigen",
                 cancel: "Abbrechen",
                 confirm: "Bestätigen",
-                inputTitleDefault: "Eingabe",
-                pleaseEnter: "Bitte eingeben",
                 ok: "OK",
 
                 newProjectTitle: "Neues Projekt",
@@ -1969,7 +2132,6 @@
                 templateLabel: "Vorlage",
                 createProject: "Projekt erstellen",
                 optBlank: "Leeres Projekt",
-                optStarter: "Starter",
                 optWebStarter: "Web Starter",
                 optPyStarter: "Python Starter",
                 optTerminalStarter: "Terminal Starter",
@@ -1987,46 +2149,58 @@
                 homeSidebarBtn: "⌂ Startseite",
                 filterAll: "Alle",
                 newProjectBtn: "+ Neues Projekt",
-                saveBtn: "💾 Speichern",
-                renameBtn: "✏️ Umbenennen",
-                deleteBtn: "🗑️ Löschen",
-                zipExportBtn: "📦 ZIP Export",
-                exportTitle: "Projekt(e) als JSON herunterladen",
-                exportBtn: "📥 Export",
-                importTitle: "Projekte aus JSON laden",
-                importBtn: "📤 Import",
+                renameBtn: "Umbenennen",
+                deleteBtn: "Löschen",
+                ieBtn: "Import / Export",
+                ieModalTitle: "Import / Export",
+                ieActionLabel: "Aktion",
+                ieExport: "Export",
+                ieImport: "Import",
+                ieFormatLabel: "Dateityp",
+                ieScopeLabel: "Umfang",
+                ieScopeSingle: "Aktuelles Projekt",
+                ieScopeAll: "Alle Projekte (Backup)",
+                ieRun: "Exportieren",
+                ieRunImport: "Datei auswählen",
+                ieHintZipSingle: "Lädt das aktuelle Projekt als ZIP-Datei herunter (index.html/style.css/script.js bzw. main.py).",
+                ieHintZipAll: "Lädt alle Projekte als eine ZIP-Datei herunter – jedes Projekt in einem eigenen Ordner.",
+                ieHintJsonSingle: "Lädt das aktuelle Projekt als JSON-Datei herunter.",
+                ieHintJsonAll: "Lädt alle Projekte als eine JSON-Backup-Datei herunter.",
+                ieHintZipImport: "Wähle eine ZIP-Datei aus. Enthält sie mehrere Projektordner, werden alle importiert.",
+                ieHintJsonImport: "Wähle eine zuvor exportierte JSON-Datei aus (einzelnes Projekt oder Backup).",
                 filesLabel: "DATEIEN",
 
                 sidebarToggleTitle: "Sidebar ein/ausblenden",
                 webTabLabel: "🌐 Web (HTML/CSS/JS)",
                 undoTitle: "Rückgängig (Undo)",
                 redoTitle: "Wiederherstellen (Redo)",
-                formatBtn: "✨ Formatieren",
-                searchBtnToolbar: "🔎 Suchen",
-                commandBtn: "⌘ Command",
-                themeBtn: "🌓 Theme",
-                editorFullscreenBtn: "⛶ Editor",
+                formatBtn: "Formatieren",
+                searchBtnToolbar: "Suchen",
+                commandBtn: "Command",
+                themeBtn: "Theme",
                 savedStatus: "✓ Gespeichert",
                 savingStatus: "● Speichert...",
 
                 consoleShort: "Konsole",
                 copyCodeTitle: "Code kopieren",
-                copyBtn: "📋 Kopieren",
+                copyErrorTitle: "Fehlercode kopieren",
+                copyBtn: "Kopieren",
+                copied: "✓ Kopiert!",
                 previewLabel: "Preview / Live-Vorschau",
                 resetWebTitle: "Web-Code komplett neu starten",
                 resetBtn: "↻ Reset",
+                pausePreviewTitle: "Live-Vorschau pausieren",
+                resumePreviewTitle: "Live-Vorschau fortsetzen",
                 fullscreenPreviewBtn: "↔ Vollbild",
                 consoleErrorLabel: "Console / Fehler-Ausgabe",
                 clearBtn: "Löschen",
                 hideConsoleTitle: "Konsole ausblenden",
                 projectStarted: "Projekt gestartet",
 
-                copy: "📋 Kopieren",
+                copy: "Kopieren",
                 run: "▶ Code Ausführen",
                 runTitle: "Code ausführen",
                 resetPyTitle: "Python komplett zurücksetzen",
-                pySearchTitle: "Suchen & Ersetzen",
-                pyFullscreenTitle: "Vollbild",
                 consoleLabel: "Ausgabe / Konsole:",
                 placeholder: "# Schreib deinen Python-Code hier hin\nname = input('Wie heißt du? ')\nprint(f'Hallo {name}!')",
                 starting: "Starte Python Engine...",
@@ -2053,8 +2227,6 @@
                 renameProjectLabel: "Neuen Namen eingeben",
                 deleteProjectTitle: "Projekt löschen",
                 deleteProjectMsg: (name) => `Möchtest du das Projekt "${name}" wirklich löschen?`,
-                exportProjectsTitle: "Projekte exportieren",
-                exportProjectsLabel: "1 = aktuelles Projekt   •   2 = alle Projekte (Backup)",
                 pythonErrorPrefix: "Python Fehler:\n",
                 matchesFound: (n) => `${n} Treffer gefunden.`,
                 matchesReplaced: (n) => `${n} Treffer ersetzt.`,
@@ -2081,11 +2253,8 @@
                 noRecentProjects: "No projects opened yet.",
                 langToggleTitle: "Switch language (German/English)",
 
-                confirmTitleDefault: "Confirm",
                 cancel: "Cancel",
                 confirm: "Confirm",
-                inputTitleDefault: "Input",
-                pleaseEnter: "Please enter",
                 ok: "OK",
 
                 newProjectTitle: "New Project",
@@ -2095,7 +2264,6 @@
                 templateLabel: "Template",
                 createProject: "Create project",
                 optBlank: "Empty project",
-                optStarter: "Starter",
                 optWebStarter: "Web starter",
                 optPyStarter: "Python starter",
                 optTerminalStarter: "Terminal starter",
@@ -2113,46 +2281,58 @@
                 homeSidebarBtn: "⌂ Home",
                 filterAll: "All",
                 newProjectBtn: "+ New Project",
-                saveBtn: "💾 Save",
-                renameBtn: "✏️ Rename",
-                deleteBtn: "🗑️ Delete",
-                zipExportBtn: "📦 ZIP Export",
-                exportTitle: "Download project(s) as JSON",
-                exportBtn: "📥 Export",
-                importTitle: "Load projects from JSON",
-                importBtn: "📤 Import",
+                renameBtn: "Rename",
+                deleteBtn: "Delete",
+                ieBtn: "Import / Export",
+                ieModalTitle: "Import / Export",
+                ieActionLabel: "Action",
+                ieExport: "Export",
+                ieImport: "Import",
+                ieFormatLabel: "File type",
+                ieScopeLabel: "Scope",
+                ieScopeSingle: "Current project",
+                ieScopeAll: "All projects (backup)",
+                ieRun: "Export",
+                ieRunImport: "Choose file",
+                ieHintZipSingle: "Downloads the current project as a ZIP file (index.html/style.css/script.js or main.py).",
+                ieHintZipAll: "Downloads all projects as one ZIP file – each project in its own folder.",
+                ieHintJsonSingle: "Downloads the current project as a JSON file.",
+                ieHintJsonAll: "Downloads all projects as one JSON backup file.",
+                ieHintZipImport: "Choose a ZIP file. If it contains multiple project folders, all of them are imported.",
+                ieHintJsonImport: "Choose a previously exported JSON file (single project or backup).",
                 filesLabel: "FILES",
 
                 sidebarToggleTitle: "Show/hide sidebar",
                 webTabLabel: "🌐 Web (HTML/CSS/JS)",
                 undoTitle: "Undo",
                 redoTitle: "Redo",
-                formatBtn: "✨ Format",
-                searchBtnToolbar: "🔎 Search",
-                commandBtn: "⌘ Command",
-                themeBtn: "🌓 Theme",
-                editorFullscreenBtn: "⛶ Editor",
+                formatBtn: "Format",
+                searchBtnToolbar: "Search",
+                commandBtn: "Command",
+                themeBtn: "Theme",
                 savedStatus: "✓ Saved",
                 savingStatus: "● Saving...",
 
                 consoleShort: "Console",
                 copyCodeTitle: "Copy code",
-                copyBtn: "📋 Copy",
+                copyErrorTitle: "Copy error",
+                copyBtn: "Copy",
+                copied: "✓ Copied!",
                 previewLabel: "Preview / Live Preview",
                 resetWebTitle: "Completely restart web code",
                 resetBtn: "↻ Reset",
+                pausePreviewTitle: "Pause live preview",
+                resumePreviewTitle: "Resume live preview",
                 fullscreenPreviewBtn: "↔ Fullscreen",
                 consoleErrorLabel: "Console / Errors",
                 clearBtn: "Clear",
                 hideConsoleTitle: "Hide console",
                 projectStarted: "Project started",
 
-                copy: "📋 Copy",
+                copy: "Copy",
                 run: "▶ Run Code",
                 runTitle: "Run code",
                 resetPyTitle: "Fully reset Python",
-                pySearchTitle: "Find & Replace",
-                pyFullscreenTitle: "Fullscreen",
                 consoleLabel: "Output / Console:",
                 placeholder: "# Write your Python code here\nname = input('What is your name? ')\nprint(f'Hello {name}!')",
                 starting: "Starting Python engine...",
@@ -2179,8 +2359,6 @@
                 renameProjectLabel: "Enter new name",
                 deleteProjectTitle: "Delete project",
                 deleteProjectMsg: (name) => `Do you really want to delete the project "${name}"?`,
-                exportProjectsTitle: "Export projects",
-                exportProjectsLabel: "1 = current project   •   2 = all projects (backup)",
                 pythonErrorPrefix: "Python error:\n",
                 matchesFound: (n) => `${n} matches found.`,
                 matchesReplaced: (n) => `${n} matches replaced.`,
@@ -2241,6 +2419,14 @@
             // sind sprachabhängig).
             if (typeof chooseProjectType === "function" && document.getElementById("project-template")) {
                 chooseProjectType(projectTypeForModal);
+            }
+
+            // Live-Vorschau-Pausebutton nach jedem Sprachwechsel neu setzen.
+            // Dadurch werden auch title und aria-label sofort auf die aktuelle
+            // Sprache aktualisiert, unabhängig davon, ob die Vorschau gerade
+            // pausiert ist oder läuft.
+            if (typeof setPreviewPauseButton === "function") {
+                setPreviewPauseButton(previewPaused);
             }
 
             // Sprach-Button auf der Startseite.
@@ -2391,7 +2577,8 @@ builtins.input = __browser_terminal_input
                     appendPythonOutput(String(result));
                 }
             } catch (err) {
-                appendPythonOutput(t("pythonErrorPrefix") + err + "\n");
+                const pythonError = t("pythonErrorPrefix") + String(err);
+                appendPythonError(pythonError);
             } finally {
                 pythonRunning = false;
                 pythonInputResolver = null;
@@ -2412,7 +2599,7 @@ builtins.input = __browser_terminal_input
                 if (!btnEl) return;
                 const original = btnEl.dataset.originalText || btnEl.innerHTML;
                 btnEl.dataset.originalText = original;
-                btnEl.innerHTML = "✓ Kopiert!";
+                btnEl.innerHTML = t("copied");
                 btnEl.classList.add("copied");
                 clearTimeout(btnEl._copyResetTimeout);
                 btnEl._copyResetTimeout = setTimeout(() => {
@@ -2453,26 +2640,74 @@ builtins.input = __browser_terminal_input
         // wirklich sauber neu starten - ohne die ganze Webseite
         // neu laden zu müssen.
         // =========================================================
-        function runWebPreview() {
-            // Nur den aktuellen Code ausführen/aktualisieren.
-            updateWebPreview();
+        let previewPaused = false;
+
+        function setPreviewPauseButton(paused) {
+            const btn = document.getElementById("preview-pause-btn");
+            const icon = document.getElementById("preview-pause-icon");
+            if (!btn || !icon) return;
+
+            btn.classList.toggle("active", paused);
+
+            // Der Tooltip wird bei jedem Aktualisieren explizit aus der
+            // aktuell gewählten App-Sprache gesetzt. Dadurch kann kein
+            // alter/native Tooltip nach einem Sprachwechsel hängen bleiben.
+            const tooltipKey = paused ? "resumePreviewTitle" : "pausePreviewTitle";
+            const tooltipText = t(tooltipKey);
+            btn.removeAttribute("title");
+            btn.setAttribute("data-preview-tooltip", tooltipText);
+            btn.setAttribute("aria-label", tooltipText);
+
+            if (paused) {
+                icon.innerHTML = '<path d="M6 3.5 12 8l-6 4.5z" fill="currentColor" stroke="none"/>';
+            } else {
+                icon.innerHTML = '<path d="M5 3v10M11 3v10"/>';
+            }
         }
 
-        function resetWebPreview() {
-            // Vorschau wirklich zerstören und anschließend komplett neu starten.
+        function togglePreviewPause() {
+            previewPaused = !previewPaused;
+            setPreviewPauseButton(previewPaused);
             const iframe = document.getElementById("preview-frame");
             if (!iframe) return;
 
-            clearWebConsole();
-            iframe.srcdoc = "";
-            iframe.src = "about:blank";
+            if (previewPaused) {
+                // Echte Pause: laufende Timer/Animationen/Medien im Preview-Dokument
+                // werden angehalten. Änderungen am Editor werden ebenfalls ignoriert.
+                try {
+                    iframe.contentWindow.postMessage({ type: "codeforge-preview-pause" }, "*");
+                } catch (e) {}
+            } else {
+                // Beim Fortsetzen wird das aktuelle Projekt einmal sauber neu geladen.
+                // Dadurch gibt es keinen alten Timer-/Animationszustand mehr.
+                updateWebPreview(true);
+            }
+        }
 
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    updateWebPreview();
-                    appendConsoleEntry("success", t("projectStarted"));
-                });
-            });
+        function resetWebPreview() {
+            // Vorschau komplett neu aufbauen. iframe.srcdoc neu zu setzen
+            // erzeugt IMMER ein frisches Dokument (zerstört alten JS-
+            // Zustand, Variablen, Timer usw.) - auch wenn der Inhalt exakt
+            // identisch ist. Der vorherige Umweg über "erst src=about:blank
+            // setzen, dann zwei requestAnimationFrame abwarten" war nicht
+            // nötig UND fehleranfällig: in bestimmten Situationen (z.B.
+            // direkt nach dem Umschalten in den Vollbild-Modus, was selbst
+            // schon einen Reflow auslöst) konnte das zweite
+            // requestAnimationFrame ausbleiben, wodurch die Vorschau auf
+            // "about:blank" (also weiß) hängen geblieben ist - genau der
+            // gemeldete Bug.
+            const iframe = document.getElementById("preview-frame");
+            if (!iframe) return;
+
+            // Reset beendet auch den Pause-Zustand der aktuellen Vorschau.
+            // Die Vorschau wird neu aufgebaut und muss daher wieder als aktiv
+            // angezeigt werden (Button/Icon/Tooltip synchron zur Vorschau).
+            previewPaused = false;
+            setPreviewPauseButton(false);
+
+            clearWebConsole();
+            updateWebPreview(true);
+            appendConsoleEntry("success", t("projectStarted"));
         }
 
         function clearWebConsole() {
@@ -2536,6 +2771,13 @@ builtins.input = __browser_terminal_input
             const data = await dbGet(currentProjectKey) || {};
             const isPython = (data.type === "python");
 
+            // Wie beim Öffnen eines Projekts: mehrere setValue()-Aufrufe
+            // hintereinander sollen nicht jeweils einzeln (mit noch
+            // unvollständigen Daten) die Vorschau neu aufbauen - das führte
+            // zu genau der Race Condition, die weißes/unstyled Rendern
+            // ausgelöst hat. Erst alle Werte setzen, danach EINMAL sauber
+            // aktualisieren.
+            suppressEditorEvents = true;
             if (isPython) {
                 const val = cmEditors.py.getValue();
                 const formatted = val.split('\n').map(line => line.trimEnd()).join('\n').trim();
@@ -2551,6 +2793,8 @@ builtins.input = __browser_terminal_input
                     cmEditors.js.setValue(js_beautify(cmEditors.js.getValue(), { indent_size: 2 }));
                 }
             }
+            suppressEditorEvents = false;
+            if (!isPython) updateWebPreview();
             triggerAutoSave();
         }
 
@@ -2718,7 +2962,8 @@ builtins.input = __browser_terminal_input
             colDivider.style.display = col.style.display === "none" ? "none" : "block";
         }
 
-        function updateWebPreview() {
+        function updateWebPreview(force = false) {
+            if (previewPaused && !force) return;
             clearWebConsole();
 
             const consoleIntercepter = `<script>
@@ -2741,23 +2986,126 @@ builtins.input = __browser_terminal_input
         sendLog('error', [msg], line);
         return false;
     };
+
+    // CodeForge Preview-Pause: Timer, Animationen und Medien werden beim
+    // Pausieren angehalten. Beim Fortsetzen lädt die Elternseite die Vorschau
+    // mit dem aktuellen Code einmal sauber neu.
+    var __cfPaused = false;
+    var __cfIntervals = new Set();
+    var __cfTimeouts = new Set();
+    var __cfRAFs = new Set();
+    var __cfSetInterval = window.setInterval;
+    var __cfClearInterval = window.clearInterval;
+    var __cfSetTimeout = window.setTimeout;
+    var __cfClearTimeout = window.clearTimeout;
+    var __cfRAF = window.requestAnimationFrame;
+    var __cfCancelRAF = window.cancelAnimationFrame;
+    window.setInterval = function(fn, ms) { var id = __cfSetInterval(fn, ms); __cfIntervals.add(id); return id; };
+    window.clearInterval = function(id) { __cfIntervals.delete(id); return __cfClearInterval(id); };
+    window.setTimeout = function(fn, ms) { var id = __cfSetTimeout(fn, ms); __cfTimeouts.add(id); return id; };
+    window.clearTimeout = function(id) { __cfTimeouts.delete(id); return __cfClearTimeout(id); };
+    window.requestAnimationFrame = function(fn) { var id = __cfRAF(fn); __cfRAFs.add(id); return id; };
+    window.cancelAnimationFrame = function(id) { __cfRAFs.delete(id); return __cfCancelRAF(id); };
+    window.addEventListener('message', function(e) {
+        if (!e.data || e.data.type !== 'codeforge-preview-pause') return;
+        __cfPaused = true;
+        __cfIntervals.forEach(function(id){ try { __cfClearInterval(id); } catch(x){} });
+        __cfTimeouts.forEach(function(id){ try { __cfClearTimeout(id); } catch(x){} });
+        __cfRAFs.forEach(function(id){ try { __cfCancelRAF(id); } catch(x){} });
+        __cfIntervals.clear(); __cfTimeouts.clear(); __cfRAFs.clear();
+        try { document.querySelectorAll('video, audio').forEach(function(m){ m.pause(); }); } catch(x){}
+        try { document.querySelectorAll('*').forEach(function(el){ el.style.animationPlayState='paused'; el.style.transition='none'; }); } catch(x){}
+    });
+
+    // WICHTIG: Klicks auf Links in der Vorschau abfangen. Die Vorschau läuft
+    // über srcdoc und hat dadurch KEINE eigene URL - Browser lösen relative
+    // Links (auch simple "#anchor"-Sprungmarken) in einem srcdoc-Dokument
+    // teilweise gegen die URL der Eltern-Seite auf. Klickt man in der
+    // Vorschau also z.B. auf <a href="#start">, kann der Browser versuchen,
+    // zur echten CodeForge-Datei zu navigieren - dadurch lädt sich die
+    // komplette App nochmal INNERHALB der Vorschau (genau der gemeldete Bug).
+    // Fix: "#anchor"-Links selbst per JS sanft scrollen (wie es z.B. bei
+    // CodePen passiert) und JEDE andere Navigation aus der Vorschau heraus
+    // grundsätzlich verhindern.
+    document.addEventListener('click', function(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (href === null) return;
+
+        if (href.charAt(0) === '#') {
+            e.preventDefault();
+            var id = href.slice(1);
+            if (id) {
+                var target = document.getElementById(id) || document.getElementsByName(id)[0];
+                if (target && target.scrollIntoView) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            return;
+        }
+
+        // Jede andere Link-Navigation (relative Pfade, "/", externe URLs...)
+        // in der Sandbox-Vorschau blockieren statt navigieren zu lassen.
+        e.preventDefault();
+    }, true);
 })();
 <\/script>
 `;
 
-            const html = (cmEditors.html ? cmEditors.html.getValue() : "") + "\n";
-            const css = `<style>\n${cmEditors.css ? cmEditors.css.getValue() : ""}\n</style>\n`;
+            const htmlSource = cmEditors.html ? cmEditors.html.getValue() : "";
+            const cssSource = cmEditors.css ? cmEditors.css.getValue() : "";
             const jsSource = cmEditors.js ? cmEditors.js.getValue() : "";
+            const styleBlock = `<style>\n${cssSource}\n</style>`;
 
-            // Alles, was im finalen Dokument VOR dem eigentlichen JS-Code steht -
-            // daraus ergibt sich die Zeilen-Verschiebung für Fehlermeldungen.
-            const bodyBeforeJs = consoleIntercepter + html + css + `<script>\n`;
+            let doc = htmlSource;
+
+            // 1) Konsolen-Interceptor + <style> SAUBER ins <head> einfügen
+            //    (bzw. falls kein <head> existiert, direkt vorne anstellen).
+            //    Vorher wurden Style/Script einfach HINTER das komplette
+            //    Dokument angehängt - bei einer vollständigen HTML-Seite
+            //    (mit eigenem <html>...</html>, wie z.B. bei einem
+            //    <!DOCTYPE html><html><head>...</head><body>...</body></html>
+            //    Aufbau) landeten sie damit nach dem schließenden </html>.
+            //    Das ist ungültiges HTML, das der Browser zwar über
+            //    Fehlerkorrektur meist "repariert", aber nicht zuverlässig
+            //    beim allerersten Rendern - genau der gemeldete Bug (Style
+            //    erst nach "Reset" sichtbar, und zwar nur bei vollständigem
+            //    HTML+CSS+JS zusammen, nicht bei einem reinen HTML-Schnipsel
+            //    ohne eigenes <head>/<body>).
+            const headInsert = consoleIntercepter + "\n" + styleBlock;
+            if (/<head[^>]*>/i.test(doc)) {
+                doc = doc.replace(/<head[^>]*>/i, m => m + "\n" + headInsert);
+            } else if (/<html[^>]*>/i.test(doc)) {
+                doc = doc.replace(/<html[^>]*>/i, m => m + "\n<head>\n" + headInsert + "\n</head>");
+            } else {
+                doc = headInsert + "\n" + doc;
+            }
+
+            // 2) Das eigentliche JS sauber vor </body> (bzw. </html>, bzw.
+            //    ganz ans Ende) einfügen - und dabei exakt mitzählen, in
+            //    welcher Zeile des finalen Dokuments der JS-Code beginnt
+            //    (für "Fehler anklicken -> zur Zeile springen").
+            const scriptOpenTag = `<script>\n`;
+            const scriptBlock = scriptOpenTag + jsSource + `\n<\/script>`;
+
+            const closingMatch = doc.match(/<\/body>/i) || doc.match(/<\/html>/i);
+            const insertionIndex = closingMatch ? closingMatch.index : doc.length;
+
+            const prefix = doc.slice(0, insertionIndex);
+            const suffix = doc.slice(insertionIndex);
+            doc = prefix + scriptBlock + "\n" + suffix;
+
+            // Alles, was im finalen Dokument VOR dem eigentlichen JS-Code
+            // steht - daraus ergibt sich die Zeilen-Verschiebung für
+            // Fehlermeldungen.
+            const bodyBeforeJs = prefix + scriptOpenTag;
             jsLineOffset = (bodyBeforeJs.match(/\n/g) || []).length;
 
-            const js = `<script>\n${jsSource}\n<\/script>`;
-
             const iframe = document.getElementById("preview-frame");
-            iframe.srcdoc = consoleIntercepter + html + css + js;
+            iframe.srcdoc = doc;
         }
 
         async function createDefaultProject() {
@@ -2772,10 +3120,6 @@ builtins.input = __browser_terminal_input
             await dbSet(key, defaultData);
             await loadProjects();
             await openProject(key);
-        }
-
-        async function createNewProject() {
-            openProjectModal("web");
         }
 
         function setProjectTypeFilter(type) {
@@ -2855,6 +3199,7 @@ builtins.input = __browser_terminal_input
                 }
             }
 
+            suppressEditorEvents = true;
             cmEditors.html.setValue(data.html || "");
             cmEditors.html.clearHistory();
             cmEditors.css.setValue(data.css || "");
@@ -2863,11 +3208,17 @@ builtins.input = __browser_terminal_input
             cmEditors.js.clearHistory();
             cmEditors.py.setValue(data.py || "");
             cmEditors.py.clearHistory();
+            suppressEditorEvents = false;
 
             const btnWeb = document.getElementById("btn-tab-web");
             const btnPy = document.getElementById("btn-tab-python");
             const webTab = document.getElementById("web-tab");
             const pyTab = document.getElementById("python-tab");
+
+            // Beim Wechsel des Projekts immer eine frische, aktive Live-Vorschau.
+            // Die Pause ist eine Eigenschaft der aktuellen Vorschau, nicht des Projekts.
+            previewPaused = false;
+            setPreviewPauseButton(false);
 
             if (projectType === "python") {
                 btnWeb.style.display = "none";
@@ -2970,25 +3321,17 @@ builtins.input = __browser_terminal_input
             });
         }
 
-        async function exportProjects() {
+        async function exportProjectsData(scope) {
             const keys = await dbGetAllKeys();
             if (keys.length === 0) {
                 showToast(t("noProjectsToExport"), "warning");
                 return;
             }
 
-            const mode = await openTextDialog(
-                t("exportProjectsTitle"),
-                t("exportProjectsLabel"),
-                "1"
-            );
-
-            if (!mode) return;
-
             let exportData = {};
             let filename = "";
 
-            if (mode.trim() === "1") {
+            if (scope === "single") {
                 if (!currentProjectKey) {
                     showToast(t("noProjectSelected"), "warning");
                     return;
@@ -2996,14 +3339,11 @@ builtins.input = __browser_terminal_input
                 const projectName = currentProjectKey.replace("codepen_", "");
                 exportData[currentProjectKey] = await dbGet(currentProjectKey);
                 filename = `project_${projectName}_${new Date().toISOString().slice(0, 10)}.json`;
-            } else if (mode.trim() === "2") {
+            } else {
                 for (const key of keys) {
                     exportData[key] = await dbGet(key);
                 }
                 filename = `projects_backup_all_${new Date().toISOString().slice(0, 10)}.json`;
-            } else {
-                showToast(t("invalidInput"), "error");
-                return;
             }
 
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
@@ -3015,10 +3355,7 @@ builtins.input = __browser_terminal_input
             downloadAnchor.remove();
         }
 
-        function importProjects(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
+        function importProjectsFromJsonFile(file) {
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
@@ -3027,33 +3364,30 @@ builtins.input = __browser_terminal_input
 
                     for (const key of Object.keys(importedData)) {
                         if (key.startsWith("codepen_")) {
-                            let targetKey = key;
-                            let baseName = key.replace("codepen_", "");
-                            let counter = 1;
-
-                            while (await dbGet(targetKey)) {
-                                targetKey = `codepen_${baseName}_Kopie${counter > 1 ? counter : ''}`;
-                                counter++;
-                            }
-
-                            await dbSet(targetKey, importedData[key]);
+                            const baseName = key.replace("codepen_", "");
+                            await saveImportedProject(baseName, importedData[key]);
                             count++;
                         }
                     }
 
+                    if (count === 0) {
+                        showToast(t("importError"), "error");
+                        return;
+                    }
+
                     showToast(t("importSuccess", count), "success");
                     await loadProjects();
-                    
+
                     const keys = await dbGetAllKeys();
                     if (keys.length > 0) {
                         await openProject(keys[0]);
                     }
+                    closeImportExportModal();
                 } catch (err) {
                     showToast(t("importError"), "error");
                 }
             };
             reader.readAsText(file);
-            event.target.value = "";
         }
 
 
@@ -3181,7 +3515,7 @@ builtins.input = __browser_terminal_input
                 if (template !== "blank") data.py = 'name = input("Wie heißt du? ")\nprint(f"Hallo {name}!")';
             } else {
                 if (template === "starter") {
-                    data.html = '<main class="card"><h1>Hallo CodeForge 👋</h1><p>Dein neues Webprojekt.</p><button onclick="hello()">Klick mich</button></main>';
+                    data.html = '<main class="card"><h1>Hallo 👋</h1><p>Dein neues Webprojekt.</p><button onclick="hello()">Klick mich</button></main>';
                     data.css = 'body{font-family:sans-serif;display:grid;place-items:center;min-height:100vh}.card{padding:32px;border:1px solid #ddd;border-radius:16px}';
                     data.js = 'function hello(){alert("Hallo Welt!");}';
                 } else if (template === "game") {
@@ -3289,6 +3623,221 @@ builtins.input = __browser_terminal_input
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         }
 
+        // Alle Projekte als EINE ZIP-Datei, jedes Projekt in einem eigenen
+        // Unterordner (Ordnername = Projektname).
+        async function exportAllProjectsAsZip() {
+            if (!window.JSZip) return showToast(t("zipModuleError"), "error");
+            const keys = await dbGetAllKeys();
+            if (keys.length === 0) return showToast(t("noProjectsToExport"), "warning");
+
+            const zip = new JSZip();
+            for (const key of keys) {
+                const data = await dbGet(key);
+                if (!data) continue;
+                const folder = zip.folder(key.replace("codepen_", ""));
+                if (data.type === "python") {
+                    folder.file("main.py", data.py || "");
+                } else {
+                    folder.file("index.html", data.html || "");
+                    folder.file("style.css", data.css || "");
+                    folder.file("script.js", data.js || "");
+                }
+            }
+            const blob = await zip.generateAsync({type:"blob"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "projects_backup_all_" + new Date().toISOString().slice(0, 10) + ".zip";
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+
+        // Speichert Projektdaten unter einem freien Schlüssel (hängt bei
+        // Namenskollision "_Kopie"/"_Kopie2"/... an) - von JSON- UND
+        // ZIP-Import gemeinsam genutzt.
+        async function saveImportedProject(baseName, data) {
+            let targetKey = "codepen_" + baseName;
+            let counter = 1;
+            while (await dbGet(targetKey)) {
+                targetKey = `codepen_${baseName}_Kopie${counter > 1 ? counter : ''}`;
+                counter++;
+            }
+            await dbSet(targetKey, data);
+        }
+
+        // ZIP-Import (bisher gab es nur ZIP-Export, kein Import). Erkennt
+        // automatisch beide Fälle:
+        // - Ein einzelnes Projekt: Dateien liegen direkt im Wurzel-
+        //   verzeichnis der ZIP (index.html/style.css/script.js oder
+        //   main.py) - der Projektname kommt vom ZIP-Dateinamen.
+        // - Ein Backup mehrerer Projekte (siehe exportAllProjectsAsZip):
+        //   jeder Unterordner in der ZIP wird als eigenes Projekt importiert,
+        //   der Ordnername wird zum Projektnamen.
+        async function importFromZip(file) {
+            if (!window.JSZip) return showToast(t("zipModuleError"), "error");
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+
+                const topLevelDirs = new Set();
+                let hasRootFiles = false;
+                zip.forEach((relPath, entry) => {
+                    if (entry.dir) return;
+                    const parts = relPath.split("/");
+                    if (parts.length > 1) {
+                        topLevelDirs.add(parts[0]);
+                    } else {
+                        hasRootFiles = true;
+                    }
+                });
+
+                const readFile = async (path) => {
+                    const entry = zip.file(path);
+                    return entry ? await entry.async("string") : null;
+                };
+
+                const buildProjectData = async (prefix) => {
+                    const p = prefix ? prefix + "/" : "";
+                    const html = await readFile(p + "index.html");
+                    const css = await readFile(p + "style.css");
+                    const js = await readFile(p + "script.js");
+                    const py = await readFile(p + "main.py");
+
+                    if (py !== null && html === null) {
+                        return { type: "python", py: py };
+                    }
+                    if (html !== null || css !== null || js !== null) {
+                        return { type: "web", html: html || "", css: css || "", js: js || "" };
+                    }
+                    return null;
+                };
+
+                let importedCount = 0;
+
+                for (const dir of topLevelDirs) {
+                    const data = await buildProjectData(dir);
+                    if (data) {
+                        await saveImportedProject(dir, data);
+                        importedCount++;
+                    }
+                }
+
+                if (hasRootFiles) {
+                    const data = await buildProjectData("");
+                    if (data) {
+                        const baseName = file.name.replace(/\.zip$/i, "") || "Import";
+                        await saveImportedProject(baseName, data);
+                        importedCount++;
+                    }
+                }
+
+                if (importedCount === 0) {
+                    showToast(t("importError"), "error");
+                    return;
+                }
+
+                showToast(t("importSuccess", importedCount), "success");
+                await loadProjects();
+                const keys = await dbGetAllKeys();
+                if (keys.length > 0) await openProject(keys[0]);
+                closeImportExportModal();
+            } catch (err) {
+                showToast(t("importError"), "error");
+            }
+        }
+
+        // =========================================================
+        // Kombiniertes Import/Export-Modal: Aktion (Export/Import),
+        // Dateityp (ZIP/JSON) und Umfang (aktuelles Projekt/Backup) werden
+        // hier zentral ausgewählt, statt über mehrere Einzel-Buttons.
+        // =========================================================
+        let ieState = { action: "export", format: "zip", scope: "single" };
+
+        function openImportExportModal() {
+            ieState = { action: "export", format: "zip", scope: "single" };
+            document.getElementById("import-export-modal").classList.add("open");
+            updateImportExportUI();
+        }
+
+        function closeImportExportModal() {
+            document.getElementById("import-export-modal").classList.remove("open");
+        }
+
+        function setIEAction(action) {
+            ieState.action = action;
+            updateImportExportUI();
+        }
+        function setIEFormat(format) {
+            ieState.format = format;
+            updateImportExportUI();
+        }
+        function setIEScope(scope) {
+            ieState.scope = scope;
+            updateImportExportUI();
+        }
+
+        function updateImportExportUI() {
+            document.getElementById("ie-action-export").classList.toggle("active", ieState.action === "export");
+            document.getElementById("ie-action-import").classList.toggle("active", ieState.action === "import");
+            document.getElementById("ie-format-zip").classList.toggle("active", ieState.format === "zip");
+            document.getElementById("ie-format-json").classList.toggle("active", ieState.format === "json");
+            document.getElementById("ie-scope-single").classList.toggle("active", ieState.scope === "single");
+            document.getElementById("ie-scope-all").classList.toggle("active", ieState.scope === "all");
+
+            // Umfang (aktuelles Projekt / Backup aller Projekte) ist nur
+            // beim EXPORT relevant. Beim Import bestimmt immer die Datei
+            // selbst, was importiert wird (einzelnes Projekt oder mehrere) -
+            // die Auswahl hätte dort keine Wirkung und würde nur verwirren.
+            document.getElementById("ie-scope-row").style.display =
+                (ieState.action === "import") ? "none" : "";
+
+            document.getElementById("ie-run-btn").textContent =
+                ieState.action === "export" ? t("ieRun") : t("ieRunImport");
+
+            document.getElementById("ie-hint").textContent = (() => {
+                if (ieState.action === "export") {
+                    if (ieState.format === "zip") {
+                        return ieState.scope === "single" ? t("ieHintZipSingle") : t("ieHintZipAll");
+                    }
+                    return ieState.scope === "single" ? t("ieHintJsonSingle") : t("ieHintJsonAll");
+                }
+                return ieState.format === "zip" ? t("ieHintZipImport") : t("ieHintJsonImport");
+            })();
+        }
+
+        async function runImportExportAction() {
+            if (ieState.action === "export") {
+                if (ieState.format === "zip") {
+                    if (ieState.scope === "single") {
+                        await exportCurrentAsZip();
+                    } else {
+                        await exportAllProjectsAsZip();
+                    }
+                } else {
+                    await exportProjectsData(ieState.scope);
+                }
+                closeImportExportModal();
+            } else {
+                const input = document.getElementById("import-file-input");
+                input.accept = ieState.format === "zip" ? ".zip" : ".json";
+                input.dataset.ieFormat = ieState.format;
+                input.click();
+                // Modal bleibt offen, bis die Dateiauswahl abgeschlossen ist -
+                // handleImportFileSelected schließt es nach erfolgreichem Import.
+            }
+        }
+
+        function handleImportFileSelected(event) {
+            const file = event.target.files[0];
+            event.target.value = "";
+            if (!file) return;
+            const format = event.target.dataset.ieFormat || (file.name.toLowerCase().endsWith(".zip") ? "zip" : "json");
+            if (format === "zip") {
+                importFromZip(file);
+            } else {
+                importProjectsFromJsonFile(file);
+            }
+        }
+
         function getActiveCodeEditor() {
             return getActiveEditor();
         }
@@ -3369,7 +3918,7 @@ builtins.input = __browser_terminal_input
                 if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); openCommandPalette(); }
                 if (mod && e.key.toLowerCase() === "f") { e.preventDefault(); openSearchModal(); }
                 if (e.key === "Escape") {
-                    document.querySelectorAll("#command-palette.open,#search-modal.open,#project-modal.open").forEach(x => x.classList.remove("open"));
+                    document.querySelectorAll("#command-palette.open,#search-modal.open,#project-modal.open,#import-export-modal.open").forEach(x => x.classList.remove("open"));
                     // Bestätigen-Dialog ("Projekt löschen?" etc.) über Escape
                     // wie ein Klick auf "Abbrechen" behandeln - vorher war er
                     // als einziges Modal per Escape gar nicht schließbar.
@@ -3469,10 +4018,16 @@ builtins.input = __browser_terminal_input
             const entry = document.createElement("div");
             entry.className = "console-entry " + type;
             const icon = type === "success" ? "✓" : type === "warn" ? "⚠" : type === "error" ? "✗" : "ℹ";
+            const errorText = String(message) + (location ? "\n" + location : "");
             entry.innerHTML = '<span class="console-icon">' + icon + '</span><span>' +
                 escapeHtml(String(message)) +
                 (location ? '<span class="console-location">' + escapeHtml(location) + '</span>' : '') +
-                '</span>';
+                '</span>' +
+                (type === "error" ? '<button class="copy-btn console-copy-error" type="button" title="' + escapeHtml(t('copyErrorTitle')) + '" data-i18n-title="copyErrorTitle" aria-label="' + escapeHtml(t('copyErrorTitle')) + '" data-i18n-aria="copyErrorTitle"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="7.5" height="7.5" rx="1"/><path d="M3.5 10.5v-7a1 1 0 0 1 1-1h7"/></svg></button>' : '');
+            if (type === "error") {
+                const copyBtn = entry.querySelector(".console-copy-error");
+                copyBtn.addEventListener("click", (ev) => { ev.stopPropagation(); copyText(errorText, copyBtn); });
+            }
             if (jumpLine) {
                 entry.classList.add("console-entry-clickable");
                 entry.title = t("jumpToLineTitle", jumpLine);
@@ -3482,22 +4037,30 @@ builtins.input = __browser_terminal_input
             output.scrollTop = output.scrollHeight;
         }
 
+        function copyText(text, button) {
+            const done = () => {
+                if (!button) return;
+                const original = button.dataset.originalText || button.innerHTML;
+                button.dataset.originalText = original;
+                button.innerHTML = t("copied");
+                button.classList.add("copied");
+                clearTimeout(button._copyResetTimeout);
+                button._copyResetTimeout = setTimeout(() => {
+                    button.innerHTML = original;
+                    button.classList.remove("copied");
+                }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+            } else {
+                fallbackCopy(text, done);
+            }
+        }
+
         function escapeHtml(value) {
             return value.replace(/[&<>"']/g, c => ({
                 "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
             }[c]));
-        }
-
-        function appendConsoleWarning(message) {
-            appendConsoleEntry("warn", message);
-        }
-
-        function appendConsoleError(message, location) {
-            appendConsoleEntry("error", message, location);
-        }
-
-        function appendConsoleSuccess(message) {
-            appendConsoleEntry("success", message);
         }
 
 
