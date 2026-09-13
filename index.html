@@ -61,6 +61,105 @@
         #project-list li:hover { background: var(--bg-surface-2); }
         #project-list li.active { border-color: var(--ember); background: var(--bg-surface-2); color: var(--text); }
 
+        /* =========================================================
+           BIBLIOTHEK: Ordner + Projekte in der Seitenleiste
+           Baut auf den vorhandenen #project-list li-Stilen auf und
+           ergaenzt nur das, was die zweite Ebene braucht.
+           ========================================================= */
+        .new-bar { display: flex; gap: 6px; }
+        .new-bar button { width: auto !important; flex: 1; text-align: center; }
+
+        #project-list li.lib-item { justify-content: flex-start; gap: 8px; }
+        .lib-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
+        .lib-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lib-count { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .lib-hint { font-size: 11px; color: var(--text-muted); flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lib-chevron { width: 9px; font-size: 9px; color: var(--text-muted); flex-shrink: 0; transition: transform .15s ease; }
+        #project-list li.lib-folder.open .lib-chevron { transform: rotate(90deg); }
+        #project-list li.lib-project.in-folder { padding-left: 28px; }
+
+        /* Umbenennen/Loeschen erscheinen erst beim Hovern - ruhige Liste.
+           Sie liegen ABSOLUT ueber der Zeile: so kosten sie den Ordnernamen
+           keine Breite und die Zeile springt beim Hovern nicht um. */
+        #project-list li.lib-item { position: relative; }
+        .lib-actions {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            display: flex; gap: 2px; opacity: 0; pointer-events: none;
+            transition: opacity .12s ease;
+            background: var(--bg-surface-2); border-radius: 5px; padding: 1px;
+        }
+        #project-list li.lib-item:hover .lib-actions,
+        #project-list li.lib-item:focus-within .lib-actions { pointer-events: auto; }
+        #project-list li.lib-item:hover .lib-actions,
+        #project-list li.lib-item:focus-within .lib-actions { opacity: 1; }
+        /* Waehrend eines Ziehens keine Hover-Buttons einblenden. */
+        body.library-dragging .lib-actions { opacity: 0 !important; pointer-events: none !important; }
+        .lib-action {
+            width: 20px !important; height: 20px; padding: 0 !important;
+            border: none !important; background: transparent !important;
+            color: var(--text-muted); font-size: 11px; line-height: 1;
+            border-radius: 4px !important; cursor: pointer;
+        }
+        .lib-action:hover { background: var(--bg-surface-2) !important; color: var(--text); }
+        #project-list li.lib-folder:hover .lib-count { display: none; }
+
+        /* Ueberschriften und Hinweiszeilen sind keine Bedienelemente. */
+        #project-list li.lib-root-header,
+        #project-list li.lib-note {
+            cursor: default; font-size: 10px; font-weight: 600; letter-spacing: .07em;
+            text-transform: uppercase; color: var(--text-muted);
+            padding: 12px 10px 4px; border: 0;
+        }
+        #project-list li.lib-empty {
+            cursor: default; font-size: 11px; color: var(--text-muted);
+            padding: 5px 10px 5px 28px; border: 0; font-style: italic;
+        }
+        #project-list li.lib-root-header:hover,
+        #project-list li.lib-note:hover,
+        #project-list li.lib-empty:hover { background: transparent; }
+
+        /* Drag & Drop: klares, aber dezentes Feedback. */
+        #project-list li.dragging { opacity: .4; }
+
+        /* Beim Ziehen laeuft ein kleines Etikett mit dem Zeiger mit.
+           pointer-events:none ist wichtig - sonst wuerde es sich selbst
+           unter dem Zeiger finden und das Drop-Ziel verdecken. */
+        .lib-drag-ghost {
+            position: fixed; top: 0; left: 0; z-index: 9999;
+            pointer-events: none; will-change: transform;
+            display: flex; align-items: center; gap: 6px;
+            max-width: 220px; padding: 6px 11px;
+            border: 1px solid var(--ember); border-radius: var(--radius-sm);
+            background: var(--bg-surface-2); color: var(--text);
+            font-family: var(--font-ui); font-size: 13px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+            box-shadow: 0 10px 28px rgba(0,0,0,.38);
+        }
+        body.light-theme .lib-drag-ghost {
+            background: #fff; color: #18151e;
+            box-shadow: 0 10px 28px rgba(16,14,20,.18);
+        }
+        body.library-dragging, body.library-dragging #project-list li { cursor: grabbing; }
+
+        /* Beruehrung darf weiterhin senkrecht scrollen. Das Ziehen laeuft
+           ueber Maus/Trackpad, dafuer braucht es kein touch-action:none -
+           das wuerde nur das Scrollen per Finger kaputt machen. */
+        #project-list li.lib-project { touch-action: pan-y; }
+
+        /* Der Scroll-Container selbst: sanftes, normales Scrollen.
+           Bewusst KEIN overflow:hidden waehrend eines Drags. */
+        #project-list { overscroll-behavior: contain; }
+        #project-list li.lib-folder.drop-target {
+            border-color: var(--ember);
+            background: var(--ember-glow);
+            color: var(--text);
+        }
+        /* Ziel "oberste Ebene": ein Rahmen um die Liste statt einer
+           vollflaechigen Einfaerbung - deutlich, aber nicht laut. */
+        #project-list.drop-root { box-shadow: inset 0 0 0 2px var(--ember-glow); border-radius: var(--radius-sm); }
+        #project-list.drop-root li.lib-root-header { color: var(--ember); }
+
+
         /* Main Area */
         #main { flex-grow: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; }
         .top-bar { display: flex; background: var(--bg-surface); align-items: center; justify-content: space-between; height: 44px; border-bottom: 1px solid var(--border); flex-shrink: 0; padding-right: 12px; }
@@ -1086,6 +1185,84 @@
             background:rgba(10,8,12,.7); backdrop-filter:blur(3px);
         }
         #confirm-dialog.open { display:flex; }
+
+        /* Kompakte Fusszeile der Seitenleiste */
+        .sidebar-footer { display:flex; gap:6px; padding-top:9px; margin-top:2px; border-top:1px solid var(--border); }
+        .sidebar-foot-btn {
+            flex:1; width:auto !important; display:flex; align-items:center; justify-content:center;
+            gap:5px; padding:7px 6px !important; font-size:11px !important; font-weight:600 !important;
+            color:var(--text-muted) !important; background:transparent !important;
+            border:1px solid transparent !important; border-radius:var(--radius-sm) !important;
+            cursor:pointer; overflow:hidden; white-space:nowrap;
+        }
+        .sidebar-foot-btn:hover { background:var(--bg-surface-2) !important; color:var(--text) !important; }
+        .sidebar-foot-btn .btn-icon { width:13px; height:13px; flex-shrink:0; }
+
+        /* Startseite: Schnellaktionen + Kennzahlen */
+        .home-logo-mark { width:38px; height:38px; color:var(--ember); vertical-align:-7px; margin-right:12px; }
+        .home-quick { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 6px; }
+        .home-quick-btn {
+            display:flex; align-items:center; gap:7px; padding:10px 15px;
+            border:1px solid var(--border); border-radius:var(--radius-md);
+            background:var(--bg-surface); color:var(--text); cursor:pointer;
+            font-size:13px; font-weight:600; transition:border-color .15s ease, transform .15s ease;
+        }
+        .home-quick-btn:hover { border-color:var(--ember); transform:translateY(-2px); }
+        .home-quick-btn .btn-icon { width:15px; height:15px; }
+        body.light-theme .home-quick-btn { background:#fff; border-color:#e4e2e6; color:#18151e; }
+        .home-stats { color:var(--muted); font-size:12px; margin:14px 0 26px; }
+
+        /* Schalter "Startseite beim Oeffnen anzeigen" - eine ruhige
+           Einstellung, kein Hauptknopf. */
+        .home-settings { display:flex; flex-direction:column; gap:7px; margin:-16px 0 26px; }
+        .home-toggle {
+            display:inline-flex; align-items:center; gap:9px; cursor:pointer;
+            color:var(--muted); font-size:12.5px;
+            user-select:none;
+        }
+        .home-toggle:hover { color:var(--text); }
+        .home-toggle input { width:15px; height:15px; accent-color:var(--ember); cursor:pointer; margin:0; }
+
+        /* Befehlspalette: Ordnername als Zusatzinfo hinter einem Projekt */
+        .command-item { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .command-hint { font-size:11px; color:var(--text-muted); flex-shrink:0; }
+        .command-note { padding:12px 10px; color:var(--text-muted); font-size:13px; }
+
+        /* Papierkorb */
+        #trash-modal {
+            position:fixed; inset:0; background:rgba(10,9,12,.62);
+            display:none; align-items:center; justify-content:center; z-index:400;
+        }
+        #trash-modal.open { display:flex; }
+        body.light-theme #trash-modal { background:rgba(27,26,31,.35); }
+        #trash-list { max-height:min(52vh,420px); overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+        .trash-row {
+            display:flex; align-items:center; gap:10px; padding:9px 10px;
+            border:1px solid var(--border); border-radius:var(--radius-sm);
+            background:var(--bg-surface-2);
+        }
+        body.light-theme .trash-row { background:#fff; border-color:#e4e2e6; }
+        .trash-icon { font-size:14px; flex-shrink:0; }
+        .trash-info { flex:1 1 auto; min-width:0; }
+        .trash-name { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .trash-meta { font-size:11px; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .trash-btn {
+            flex-shrink:0; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer;
+            border-radius:var(--radius-sm); border:1px solid var(--border-strong);
+            background:var(--bg-surface); color:var(--text);
+        }
+        .trash-restore:hover { border-color:var(--ember); color:var(--ember); }
+        .trash-purge { color:var(--text-muted); }
+        .trash-purge:hover { border-color:#d9534f; color:#d9534f; }
+        .trash-empty-state { padding:26px 10px; text-align:center; color:var(--text-muted); font-size:13px; }
+
+        /* Zaehler an den Papierkorb-Schaltern */
+        .trash-count {
+            margin-left:6px; padding:1px 6px; border-radius:999px;
+            background:var(--bg-surface-2); color:var(--text-muted);
+            font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+        }
+
         body.light-theme #confirm-dialog { background:rgba(27,26,31,.35) !important; }
 
         @media (max-width:760px) {
@@ -1324,6 +1501,54 @@
             background: #fff !important;
         }
 
+        /* =========================================================
+           ECHTES BROWSER-VOLLBILD DER LIVE-VORSCHAU
+           Im Vollbild ist der Vorschau-Container das oberste Element.
+           Er muss die ganze Flaeche fuellen und seine Konsole unten
+           behalten (Kopfzeile - Vorschau - Konsole).
+           Hinweis: :fullscreen und :-webkit-full-screen muessen in
+           GETRENNTEN Regeln stehen. In einer gemeinsamen Selektorliste
+           wuerde ein Browser, der eine der beiden nicht kennt, die
+           komplette Regel verwerfen.
+           ========================================================= */
+        #preview-container:fullscreen {
+            width: 100%;
+            height: 100%;
+            display: flex !important;
+            flex-direction: column;
+            background: #fff;
+        }
+        #preview-container:fullscreen #preview-frame {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: 0;
+        }
+        #preview-container:fullscreen .js-console-container {
+            flex-shrink: 0;
+        }
+
+        /* Konsolen-Schalter der Kopfzeile: ausserhalb des Vollbilds
+           unsichtbar, damit die normale Oberflaeche unveraendert bleibt. */
+        #preview-console-btn { display: none; }
+        #preview-container:fullscreen #preview-console-btn { display: inline-flex; }
+
+        #preview-container:-webkit-full-screen {
+            width: 100%;
+            height: 100%;
+            display: flex !important;
+            flex-direction: column;
+            background: #fff;
+        }
+        #preview-container:-webkit-full-screen #preview-frame {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: 0;
+        }
+        #preview-container:-webkit-full-screen .js-console-container {
+            flex-shrink: 0;
+        }
+        #preview-container:-webkit-full-screen #preview-console-btn { display: inline-flex; }
+
     
         /* =========================================================
            FINAL PYTHON + FILTER LIGHT MODE FIX
@@ -1499,7 +1724,7 @@
     <div id="home-screen">
         <button id="app-lang-toggle" class="lang-toggle-btn" onclick="toggleAppLang()" title="Sprache wechseln (Deutsch/Englisch)">🇩🇪 Deutsch</button>
         <div class="home-hero">
-            <div class="home-logo">⚡ CodeForge</div>
+            <div class="home-logo"><svg class="home-logo-mark" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.6" y="2.6" width="26.8" height="26.8" rx="8.4"/><path d="M12.4 11.6 8.8 16l3.6 4.4M19.6 11.6 23.2 16l-3.6 4.4"/></svg>CodeForge</div>
             <div class="home-subtitle" data-i18n="homeSubtitle">Deine lokale Web- und Python-Entwicklungsumgebung.</div>
         </div>
         <div class="home-inner">
@@ -1512,6 +1737,28 @@
                     <h3 data-i18n="homePyTitle">🐍 Python-Projekt</h3>
                     <p data-i18n="homePyDesc">Python direkt im Browser mit interaktivem Terminal.</p>
                 </div>
+            </div>
+            <div class="home-quick">
+                <button class="home-quick-btn" onclick="createFolderFromDialog()">
+                    <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5v-9h4l1.4 1.8H14v7.2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg><span data-i18n="homeNewFolder">Neuer Ordner</span>
+                </button>
+                <button class="home-quick-btn" onclick="openImportExportModal()">
+                    <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.8v7M2 7.3l2 2.3 2-2.3"/><path d="M12 13.2v-7M10 8.7l2-2.3 2 2.3"/></svg><span data-i18n="ieShortBtn">Import / Export</span>
+                </button>
+                <button class="home-quick-btn" onclick="openTrashModal()">
+                    <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.3 4.5v-1a1 1 0 0 1 1-1h1.4a1 1 0 0 1 1 1v1M4.6 4.5l.5 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.5-8.3"/></svg><span data-i18n="trashShortBtn">Papierkorb</span><span class="trash-count" data-trash-count></span>
+                </button>
+            </div>
+            <div class="home-stats" id="home-stats"></div>
+            <div class="home-settings">
+                <label class="home-toggle">
+                    <input type="checkbox" id="home-on-start" onchange="setHomeOnStart(this.checked)">
+                    <span data-i18n="homeOnStartLabel">Startseite beim &Ouml;ffnen anzeigen</span>
+                </label>
+                <label class="home-toggle">
+                    <input type="checkbox" id="pause-on-open" onchange="setPauseOnOpen(this.checked)">
+                    <span data-i18n="pauseOnOpenLabel">Projekte beim &Ouml;ffnen und Wechseln automatisch pausieren</span>
+                </label>
             </div>
             <h3 id="home-recent-title" style="margin-bottom:12px;" data-i18n="homeRecent">Zuletzt geöffnet</h3>
             <div id="recent-projects"></div>
@@ -1558,6 +1805,10 @@
                     <button id="choice-python" onclick="chooseProjectType('python')">🐍 Python</button>
                 </div>
             </div>
+            <div class="modal-row" id="new-project-folder-row">
+                <label data-i18n="folderLabel">Ordner</label>
+                <select id="new-project-folder"></select>
+            </div>
             <div class="modal-row">
                 <label data-i18n="templateLabel">Vorlage</label>
                 <select id="project-template">
@@ -1581,6 +1832,17 @@
             </div>
             <input id="command-input" placeholder="Befehl suchen..." autocomplete="off" data-i18n-placeholder="commandSearchPlaceholder">
             <div id="command-list"></div>
+        </div>
+    </div>
+
+    <div id="trash-modal">
+        <div class="modal-card">
+            <h2 data-i18n="trashTitle">Zuletzt gel&ouml;scht</h2>
+            <div id="trash-list"></div>
+            <div class="modal-actions">
+                <button class="secondary-btn" id="trash-empty-btn" onclick="emptyTrash()" data-i18n="emptyTrashBtn">Papierkorb leeren</button>
+                <button class="primary-btn" onclick="closeTrashModal()" data-i18n="closeBtn">Schlie&szlig;en</button>
+            </div>
         </div>
     </div>
 
@@ -1656,14 +1918,22 @@
         </div>
 
         <input type="text" id="search-input" placeholder="Suchen..." onkeyup="filterProjects()" data-i18n-placeholder="searchPlaceholder">
-        <button class="colored-sidebar-btn new-project-btn" onclick="openProjectModal()" data-i18n="newProjectBtn">+ Neues Projekt</button>
-        <button class="colored-sidebar-btn rename-btn" onclick="renameCurrentProject()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.3a1.6 1.6 0 0 1 2.4 2.4L5.5 12.9l-3 .8.8-3z"/></svg><span data-i18n="renameBtn">Umbenennen</span></button>
-        <button class="colored-sidebar-btn delete-btn" onclick="deleteCurrentProject()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.3 4.5v-1a1 1 0 0 1 1-1h1.4a1 1 0 0 1 1 1v1M4.6 4.5l.5 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.5-8.3"/></svg><span data-i18n="deleteBtn">Löschen</span></button>
-        <button class="colored-sidebar-btn ie-btn" onclick="openImportExportModal()"><svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.8v7M2 7.3l2 2.3 2-2.3"/><path d="M12 13.2v-7M10 8.7l2-2.3 2 2.3"/></svg><span data-i18n="ieBtn">Import / Export</span></button>
+        <div class="new-bar">
+            <button class="colored-sidebar-btn new-project-btn" onclick="openProjectModal()" data-i18n="newProjectShortBtn">+ Projekt</button>
+            <button class="colored-sidebar-btn new-folder-btn" onclick="createFolderFromDialog()" data-i18n="newFolderBtn">+ Ordner</button>
+        </div>
 
         <input type="file" id="import-file-input" style="display: none;" onchange="handleImportFileSelected(event)">
 
         <ul id="project-list"></ul>
+        <div class="sidebar-footer">
+            <!-- Import/Export sitzt bewusst NUR auf der Startseite.
+                 Die Funktion selbst bleibt vollstaendig erhalten
+                 (openImportExportModal + das Modal weiter unten). -->
+            <button class="sidebar-foot-btn" onclick="openTrashModal()" title="Zuletzt geloescht" data-i18n-title="trashTitle">
+                <svg class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.3 4.5v-1a1 1 0 0 1 1-1h1.4a1 1 0 0 1 1 1v1M4.6 4.5l.5 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.5-8.3"/></svg><span data-i18n="trashShortBtn">Papierkorb</span><span class="trash-count" data-trash-count></span>
+            </button>
+        </div>
 <div class="project-files"><div class="project-files-title" data-i18n="filesLabel">DATEIEN</div><div id="file-tree"></div></div>
     </div>
 
@@ -1762,11 +2032,12 @@
                 <div class="preview-header">
                     <span data-i18n="previewLabel">Preview / Live-Vorschau</span>
                     <div class="preview-header-right">
-                        <button id="reset-web-btn" onclick="resetWebPreview()" title="Web-Code komplett neu starten" data-i18n="resetBtn" data-i18n-title="resetWebTitle">↻ Reset</button>
-                        <button id="preview-pause-btn" class="icon-btn preview-pause-btn" onclick="togglePreviewPause()" aria-label="Live-Vorschau pausieren">
+                        <button id="reset-web-btn" onclick="resetWebPreview(event)" title="Web-Code komplett neu starten" data-i18n="resetBtn" data-i18n-title="resetWebTitle">↻ Reset</button>
+                        <button id="preview-pause-btn" class="icon-btn preview-pause-btn" onclick="togglePreviewPause(event)" aria-label="Live-Vorschau pausieren">
                             <svg id="preview-pause-icon" class="btn-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3v10M11 3v10"/></svg>
                         </button>
-                        <button class="icon-btn" onclick="togglePreviewFullscreen()" style="padding: 2px 8px;" data-i18n="fullscreenPreviewBtn">↔ Vollbild</button>
+                        <button id="preview-console-btn" class="icon-btn active" onclick="toggleWebConsole()" style="padding: 2px 8px;" data-i18n="consoleShort">Konsole</button>
+                        <button id="preview-fullscreen-btn" class="icon-btn" onclick="togglePreviewFullscreen()" style="padding: 2px 8px;" data-i18n="fullscreenPreviewBtn">↔ Vollbild</button>
                     </div>
                 </div>
                 <iframe id="preview-frame"></iframe>
@@ -2148,10 +2419,6 @@
 
                 homeSidebarBtn: "⌂ Startseite",
                 filterAll: "Alle",
-                newProjectBtn: "+ Neues Projekt",
-                renameBtn: "Umbenennen",
-                deleteBtn: "Löschen",
-                ieBtn: "Import / Export",
                 ieModalTitle: "Import / Export",
                 ieActionLabel: "Aktion",
                 ieExport: "Export",
@@ -2191,7 +2458,77 @@
                 resetBtn: "↻ Reset",
                 pausePreviewTitle: "Live-Vorschau pausieren",
                 resumePreviewTitle: "Live-Vorschau fortsetzen",
+                fullscreenUnavailable: "Vollbild wird von diesem Browser nicht erlaubt.",
                 fullscreenPreviewBtn: "↔ Vollbild",
+                exitFullscreenPreviewBtn: "↔ Vollbild beenden",
+
+                // --- Ordner-System ---
+                newProjectShortBtn: "+ Projekt",
+
+                // --- Papierkorb / Startseite / Palette ---
+                trashTitle: "Zuletzt gelöscht",
+                trashShortBtn: "Papierkorb",
+                ieShortBtn: "Import / Export",
+                closeBtn: "Schließen",
+                restoreBtn: "Wiederherstellen",
+                purgeBtn: "Endgültig",
+                emptyTrashBtn: "Papierkorb leeren",
+                trashEmptyState: "Hier ist nichts. Gelöschte Projekte und Ordner landen zuerst hier.",
+                movedToTrash: (name) => `„${name}“ liegt jetzt im Papierkorb.`,
+                restoredProject: (name) => `„${name}“ wiederhergestellt.`,
+                restoredFolder: (name) => `Ordner „${name}“ wiederhergestellt.`,
+                restoredFolderWith: (name, count) => `Ordner „${name}“ wiederhergestellt, ${count === 1 ? "1 Projekt kam" : count + " Projekte kamen"} zurück.`,
+                purgeTitle: "Endgültig löschen",
+                purgeMsg: (name) => `„${name}“ endgültig löschen? Das lässt sich nicht rückgängig machen.`,
+                purged: (name) => `„${name}“ endgültig gelöscht.`,
+                emptyTrashTitle: "Papierkorb leeren",
+                emptyTrashMsg: (count) => `${count === 1 ? "Den einen Eintrag" : "Alle " + count + " Einträge"} endgültig löschen? Das lässt sich nicht rückgängig machen.`,
+                trashEmptied: "Papierkorb geleert.",
+                trashProjectMeta: (folder, when) => `aus „${folder}“ · ${when}`,
+                trashProjectMetaRoot: (when) => `ohne Ordner · ${when}`,
+                trashFolderMeta: (count, when) => `Ordner · ${count === 1 ? "1 Projekt" : count + " Projekte"} · ${when}`,
+                trashFolderMetaEmpty: (when) => `Leerer Ordner · ${when}`,
+                justNow: "gerade eben",
+                minutesAgo: (n) => `vor ${n} Min.`,
+                hoursAgo: (n) => `vor ${n} Std.`,
+                daysAgo: (n) => `vor ${n} ${n === 1 ? "Tag" : "Tagen"}`,
+                homeNewFolder: "Neuer Ordner",
+                homeOnStartLabel: "Startseite beim Öffnen anzeigen",
+                pauseOnOpenLabel: "Projekte beim Öffnen und Wechseln automatisch pausieren",
+                pauseOnOpenOn: "Projekte starten jetzt pausiert.",
+                pauseOnOpenOff: "Projekte starten jetzt direkt.",
+                homeOnStartOn: "Startseite wird beim Öffnen angezeigt.",
+                homeOnStartOff: "CodeForge öffnet jetzt direkt das letzte Projekt.",
+                homeStats: (projects, folders) => `${projects} ${projects === 1 ? "Projekt" : "Projekte"} · ${folders} ${folders === 1 ? "Ordner" : "Ordner"}`,
+                cmdNewFolder: "Neuer Ordner",
+                cmdRename: "Projekt umbenennen",
+                cmdDeleteProject: "Projekt löschen",
+                cmdTrash: "Papierkorb öffnen",
+                cmdOpenProject: (name) => `Öffnen: ${name}`,
+                newFolderBtn: "+ Ordner",
+                newFolderTitle: "Neuer Ordner",
+                folderNameLabel: "Ordnername",
+                folderLabel: "Ordner",
+                noFolderOption: "Kein Ordner",
+                renameFolderTitle: "Ordner umbenennen",
+                deleteFolderTitle: "Ordner löschen",
+                deleteFolderMsg: (name, count) => `Ordner „${name}“ löschen? ${count === 1 ? "Das Projekt darin bleibt" : "Die " + count + " Projekte darin bleiben"} erhalten und liegt danach außerhalb eines Ordners.`,
+                deleteEmptyFolderMsg: (name) => `Ordner „${name}“ löschen?`,
+                enterFolderName: "Bitte einen Ordnernamen eingeben.",
+                folderNameExists: "Es gibt bereits einen Ordner mit diesem Namen.",
+                folderCreated: (name) => `Ordner „${name}“ erstellt.`,
+                folderRenamed: (name) => `Ordner heißt jetzt „${name}“.`,
+                folderDeleted: (name) => `Ordner „${name}“ gelöscht.`,
+                folderDeletedKept: (name, count) => `Ordner „${name}“ gelöscht. ${count === 1 ? "Ein Projekt wurde" : count + " Projekte wurden"} behalten.`,
+                emptyFolder: "Leer",
+                emptyLibrary: "Noch keine Projekte",
+                rootSectionLabel: "Projekte",
+                noSearchResults: "Keine Treffer",
+                inFolderHint: (name) => `in ${name}`,
+                movedToFolder: (name, folder) => `„${name}“ liegt jetzt in „${folder}“.`,
+                movedToRoot: (name) => `„${name}“ liegt jetzt außerhalb aller Ordner.`,
+                importSuccessFolders: (projects, folders) => `${projects} ${projects === 1 ? "Projekt" : "Projekte"} und ${folders} ${folders === 1 ? "Ordner" : "Ordner"} importiert.`,
+                importSkipped: (count) => `${count} beschädigte Einträge übersprungen.`,
                 consoleErrorLabel: "Console / Fehler-Ausgabe",
                 clearBtn: "Löschen",
                 hideConsoleTitle: "Konsole ausblenden",
@@ -2217,7 +2554,6 @@
                 nameExists2: "Ein Projekt mit diesem Namen existiert bereits.",
                 noProjectsToExport: "Keine Projekte zum Exportieren vorhanden.",
                 noProjectSelected: "Kein Projekt ausgewählt!",
-                invalidInput: "Ungültige Eingabe.",
                 importSuccess: (count) => `${count} Projekte erfolgreich importiert!`,
                 importError: "Fehler beim Lesen der Datei. Bitte stelle sicher, dass es eine gültige JSON-Datei ist.",
                 enterProjectName: "Bitte einen Projektnamen eingeben.",
@@ -2280,10 +2616,6 @@
 
                 homeSidebarBtn: "⌂ Home",
                 filterAll: "All",
-                newProjectBtn: "+ New Project",
-                renameBtn: "Rename",
-                deleteBtn: "Delete",
-                ieBtn: "Import / Export",
                 ieModalTitle: "Import / Export",
                 ieActionLabel: "Action",
                 ieExport: "Export",
@@ -2323,7 +2655,77 @@
                 resetBtn: "↻ Reset",
                 pausePreviewTitle: "Pause live preview",
                 resumePreviewTitle: "Resume live preview",
+                fullscreenUnavailable: "Fullscreen is not allowed by this browser.",
                 fullscreenPreviewBtn: "↔ Fullscreen",
+                exitFullscreenPreviewBtn: "↔ Exit fullscreen",
+
+                // --- Folder system ---
+                newProjectShortBtn: "+ Project",
+
+                // --- Trash / home screen / palette ---
+                trashTitle: "Recently deleted",
+                trashShortBtn: "Trash",
+                ieShortBtn: "Import / Export",
+                closeBtn: "Close",
+                restoreBtn: "Restore",
+                purgeBtn: "Delete",
+                emptyTrashBtn: "Empty trash",
+                trashEmptyState: "Nothing here. Deleted projects and folders land here first.",
+                movedToTrash: (name) => `“${name}” is now in the trash.`,
+                restoredProject: (name) => `“${name}” restored.`,
+                restoredFolder: (name) => `Folder “${name}” restored.`,
+                restoredFolderWith: (name, count) => `Folder “${name}” restored, ${count === 1 ? "1 project came" : count + " projects came"} back.`,
+                purgeTitle: "Delete forever",
+                purgeMsg: (name) => `Delete “${name}” forever? This cannot be undone.`,
+                purged: (name) => `“${name}” deleted forever.`,
+                emptyTrashTitle: "Empty trash",
+                emptyTrashMsg: (count) => `Delete ${count === 1 ? "the one entry" : "all " + count + " entries"} forever? This cannot be undone.`,
+                trashEmptied: "Trash emptied.",
+                trashProjectMeta: (folder, when) => `from “${folder}” · ${when}`,
+                trashProjectMetaRoot: (when) => `no folder · ${when}`,
+                trashFolderMeta: (count, when) => `Folder · ${count === 1 ? "1 project" : count + " projects"} · ${when}`,
+                trashFolderMetaEmpty: (when) => `Empty folder · ${when}`,
+                justNow: "just now",
+                minutesAgo: (n) => `${n} min ago`,
+                hoursAgo: (n) => `${n} h ago`,
+                daysAgo: (n) => `${n} ${n === 1 ? "day" : "days"} ago`,
+                homeNewFolder: "New folder",
+                homeOnStartLabel: "Show start page when opening",
+                pauseOnOpenLabel: "Pause projects automatically when opening or switching",
+                pauseOnOpenOn: "Projects now start paused.",
+                pauseOnOpenOff: "Projects now start running.",
+                homeOnStartOn: "Start page shows when you open CodeForge.",
+                homeOnStartOff: "CodeForge now opens your last project directly.",
+                homeStats: (projects, folders) => `${projects} ${projects === 1 ? "project" : "projects"} · ${folders} ${folders === 1 ? "folder" : "folders"}`,
+                cmdNewFolder: "New folder",
+                cmdRename: "Rename project",
+                cmdDeleteProject: "Delete project",
+                cmdTrash: "Open trash",
+                cmdOpenProject: (name) => `Open: ${name}`,
+                newFolderBtn: "+ Folder",
+                newFolderTitle: "New folder",
+                folderNameLabel: "Folder name",
+                folderLabel: "Folder",
+                noFolderOption: "No folder",
+                renameFolderTitle: "Rename folder",
+                deleteFolderTitle: "Delete folder",
+                deleteFolderMsg: (name, count) => `Delete folder “${name}”? The ${count === 1 ? "project" : count + " projects"} inside ${count === 1 ? "is" : "are"} kept and will sit outside any folder.`,
+                deleteEmptyFolderMsg: (name) => `Delete folder “${name}”?`,
+                enterFolderName: "Please enter a folder name.",
+                folderNameExists: "A folder with this name already exists.",
+                folderCreated: (name) => `Folder “${name}” created.`,
+                folderRenamed: (name) => `Folder is now called “${name}”.`,
+                folderDeleted: (name) => `Folder “${name}” deleted.`,
+                folderDeletedKept: (name, count) => `Folder “${name}” deleted. ${count === 1 ? "1 project was" : count + " projects were"} kept.`,
+                emptyFolder: "Empty",
+                emptyLibrary: "No projects yet",
+                rootSectionLabel: "Projects",
+                noSearchResults: "No matches",
+                inFolderHint: (name) => `in ${name}`,
+                movedToFolder: (name, folder) => `“${name}” moved to “${folder}”.`,
+                movedToRoot: (name) => `“${name}” moved out of all folders.`,
+                importSuccessFolders: (projects, folders) => `Imported ${projects} ${projects === 1 ? "project" : "projects"} and ${folders} ${folders === 1 ? "folder" : "folders"}.`,
+                importSkipped: (count) => `Skipped ${count} damaged entries.`,
                 consoleErrorLabel: "Console / Errors",
                 clearBtn: "Clear",
                 hideConsoleTitle: "Hide console",
@@ -2349,7 +2751,6 @@
                 nameExists2: "A project with this name already exists.",
                 noProjectsToExport: "No projects available to export.",
                 noProjectSelected: "No project selected!",
-                invalidInput: "Invalid input.",
                 importSuccess: (count) => `${count} projects imported successfully!`,
                 importError: "Error reading the file. Please make sure it is a valid JSON file.",
                 enterProjectName: "Please enter a project name.",
@@ -2427,6 +2828,24 @@
             // pausiert ist oder läuft.
             if (typeof setPreviewPauseButton === "function") {
                 setPreviewPauseButton(previewPaused);
+            }
+
+            // Der Vollbild-Button traegt je nach Zustand zwei verschiedene
+            // Beschriftungen. data-i18n setzt oben immer die "Vollbild"-
+            // Variante, deshalb hier den echten Zustand nachziehen.
+            if (typeof updatePreviewFullscreenButton === "function") {
+                updatePreviewFullscreenButton();
+
+            // Bibliothek und Ordner-Auswahl enthalten uebersetzte Texte
+            // ("PROJEKTE", "Leer", "Kein Ordner") und werden deshalb nach
+            // einem Sprachwechsel neu aufgebaut.
+            if (typeof loadProjects === "function" && document.getElementById("project-list")) {
+                loadProjects();
+            }
+            const folderSelectEl = document.getElementById("new-project-folder");
+            if (typeof populateFolderSelect === "function" && folderSelectEl) {
+                populateFolderSelect(folderSelectEl.value);
+            }
             }
 
             // Sprach-Button auf der Startseite.
@@ -2634,13 +3053,85 @@ builtins.input = __browser_terminal_input
         }
 
         // =========================================================
-        // WEB-VORSCHAU: Reset startet die Preview komplett neu
-        // Baut das iframe komplett neu auf (statt nur srcdoc zu
-        // überschreiben), damit z.B. Spiele/Skripte im iframe
-        // wirklich sauber neu starten - ohne die ganze Webseite
-        // neu laden zu müssen.
+        // WEB-VORSCHAU: Pause/Weiter und Reset
+        //
+        // Reset baut das Vorschau-Dokument komplett neu auf (neues srcdoc
+        // = frisches Dokument ohne alten JS-Zustand).
+        // Pause/Weiter friert das laufende Dokument nur ein bzw. laesst es
+        // weiterlaufen - ohne Neuaufbau.
         // =========================================================
         let previewPaused = false;
+
+        // =========================================================
+        // TASTATUR-FOKUS RUND UM DIE LIVE-VORSCHAU
+        //
+        // Zwei gemeldete Fehler haben DIESELBE Ursache: nach einer
+        // Aktion liegt der Tastatur-Fokus nicht dort, wo der Nutzer ihn
+        // erwartet.
+        //
+        // 1) "Leertaste beendet das Vollbild wieder."
+        //    Ein <button> behaelt nach einem Mausklick den Fokus. Drueckt
+        //    man danach Leertaste oder Enter, loest der BROWSER denselben
+        //    Button noch einmal aus. Das ist eingebautes Verhalten von
+        //    HTML, kein eigener Tastenkuerzel - es gibt hier keine
+        //    Shortcuts fuer Vollbild, Pause oder Reset, und es werden
+        //    auch keine angelegt.
+        //
+        // 2) "Laufzeit-Eingaben landen im Code."
+        //    Hat ein Editor den Fokus und der Nutzer tippt, waehrend er
+        //    auf die Vorschau schaut, schreibt er in den QUELLTEXT. Das
+        //    laufende Projekt bekommt keine einzige Taste ab.
+        //
+        // Loesung an der Wurzel, nicht am Symptom:
+        //   * Ein Button, der MIT DER MAUS angeklickt wurde, gibt den
+        //     Fokus wieder ab. Bedienung ueber die Tastatur (Tab, dann
+        //     Leertaste/Enter) bleibt unveraendert - das ist normale
+        //     Barrierefreiheit und kein Shortcut.
+        //   * Nach Reset, Weiter/Pause und beim Wechsel ins Vollbild
+        //     bekommt die Vorschau selbst den Fokus. Tasten gehen damit
+        //     an das laufende Projekt und nicht in den Code.
+        //
+        // Ereignisse aus dem iframe koennen die Bedienelemente ohnehin
+        // nicht erreichen: Ereignisse eines eingebetteten Dokuments
+        // steigen nicht in die Elternseite auf.
+        // =========================================================
+        function initButtonFocusReset() {
+            document.addEventListener("click", (e) => {
+                // detail === 0 bedeutet: ueber die Tastatur ausgeloest.
+                // Diese Aktivierung darf den Fokus behalten.
+                if (!e.detail) return;
+                const btn = e.target && e.target.closest ? e.target.closest("button") : null;
+                if (!btn || btn.disabled) return;
+                if (document.activeElement !== btn) return;
+                btn.blur();
+            });
+        }
+
+        // Ein echter Mausklick hat detail > 0, eine Tastatur-Aktivierung
+        // (Tab, dann Leertaste/Enter) hat detail === 0.
+        function isPointerActivation(e) {
+            return !!(e && typeof e.detail === "number" && e.detail > 0);
+        }
+
+        // Gibt der Live-Vorschau den Tastatur-Fokus, damit Tasten beim
+        // laufenden Projekt ankommen. Nur im Web-Tab sinnvoll.
+        //
+        // Wird ein Ereignis mitgegeben, wird der Fokus NUR nach einer
+        // Maus-Aktivierung umgesetzt. Wer die App per Tastatur bedient,
+        // behaelt den Fokus auf dem Bedienelement - sonst waere das
+        // Bedienen ohne Maus nach dem ersten Klick vorbei.
+        function focusPreview(triggerEvent) {
+            if (triggerEvent && !isPointerActivation(triggerEvent)) return;
+            const webTab = document.getElementById("web-tab");
+            if (!webTab || !webTab.classList.contains("active")) return;
+            const iframe = document.getElementById("preview-frame");
+            if (!iframe) return;
+            try {
+                iframe.focus({ preventScroll: true });
+            } catch (e) {
+                try { iframe.focus(); } catch (err) {}
+            }
+        }
 
         function setPreviewPauseButton(paused) {
             const btn = document.getElementById("preview-pause-btn");
@@ -2665,26 +3156,29 @@ builtins.input = __browser_terminal_input
             }
         }
 
-        function togglePreviewPause() {
+        // Pause/Weiter ist ein reiner Zustandswechsel: RUNNING -> PAUSED ->
+        // RUNNING. Beide Richtungen sind nur eine Nachricht an das
+        // Vorschau-Dokument, das sich selbst einfriert bzw. genau dort
+        // weiterlaeuft (siehe Shim in updateWebPreview). Die Vorschau wird
+        // dabei NICHT neu geladen - sonst waere "Weiter" ein Neustart.
+        function togglePreviewPause(triggerEvent) {
+            const iframe = document.getElementById("preview-frame");
+            if (!iframe || !iframe.contentWindow) return;
+
             previewPaused = !previewPaused;
             setPreviewPauseButton(previewPaused);
-            const iframe = document.getElementById("preview-frame");
-            if (!iframe) return;
+            try {
+                iframe.contentWindow.postMessage({
+                    type: previewPaused ? "codeforge-preview-pause" : "codeforge-preview-resume"
+                }, "*");
+            } catch (e) {}
 
-            if (previewPaused) {
-                // Echte Pause: laufende Timer/Animationen/Medien im Preview-Dokument
-                // werden angehalten. Änderungen am Editor werden ebenfalls ignoriert.
-                try {
-                    iframe.contentWindow.postMessage({ type: "codeforge-preview-pause" }, "*");
-                } catch (e) {}
-            } else {
-                // Beim Fortsetzen wird das aktuelle Projekt einmal sauber neu geladen.
-                // Dadurch gibt es keinen alten Timer-/Animationszustand mehr.
-                updateWebPreview(true);
-            }
+            // Tasten sollen ab jetzt beim Projekt ankommen, nicht auf dem
+            // gerade angeklickten Button liegen bleiben.
+            focusPreview(triggerEvent);
         }
 
-        function resetWebPreview() {
+        function resetWebPreview(triggerEvent) {
             // Vorschau komplett neu aufbauen. iframe.srcdoc neu zu setzen
             // erzeugt IMMER ein frisches Dokument (zerstört alten JS-
             // Zustand, Variablen, Timer usw.) - auch wenn der Inhalt exakt
@@ -2708,6 +3202,7 @@ builtins.input = __browser_terminal_input
             clearWebConsole();
             updateWebPreview(true);
             appendConsoleEntry("success", t("projectStarted"));
+            focusPreview(triggerEvent);
         }
 
         function clearWebConsole() {
@@ -2802,7 +3297,43 @@ builtins.input = __browser_terminal_input
         const editorsColumn = document.getElementById('editors-column');
         const webTab = document.getElementById('web-tab');
 
+        // =========================================================
+        // TRENNER ZIEHEN (Spalte + Zeilen)
+        //
+        // Waehrend eines Drags wird pro Pointer-Event NICHTS am Layout
+        // gelesen oder geschrieben - die Zeigerposition landet nur in einer
+        // Variablen. Die Style-Aenderung passiert genau EINMAL pro Frame in
+        // einem requestAnimationFrame-Schritt.
+        //
+        // Vorher lief bei jedem Mausschritt ein getBoundingClientRect()
+        // direkt vor einem Style-Write (erzwungenes Synchron-Layout) UND
+        // ein refreshCodeMirrorEditors(), das jedes Mal einen eigenen
+        // 50ms-Timer anlegte. Bei einem langen Drag stauten sich so
+        // hunderte Timer, die alle vier CodeMirror-Editoren komplett neu
+        // vermessen liessen. Der Haupt-Thread war dadurch dauerhaft
+        // blockiert - und genau das liess den iframe der Live-Vorschau
+        // sichtbar flackern (besonders bei grossen Projekten).
+        // =========================================================
+        let colDragPointer = null;
+        let colDragFrame = null;
+        let colDragX = 0;
+        let colDragRect = null;
+
+        function applyColDrag() {
+            colDragFrame = null;
+            if (colDragPointer === null || !colDragRect) return;
+            const newWidth = ((colDragX - colDragRect.left) / colDragRect.width) * 100;
+            if (newWidth >= 10 && newWidth <= 90) {
+                editorsColumn.style.width = `${newWidth}%`;
+            }
+        }
+
         colDivider.addEventListener('pointerdown', (e) => {
+            colDragPointer = e.pointerId;
+            colDragX = e.clientX;
+            // Die Breite des Web-Tabs aendert sich waehrend des Ziehens
+            // nicht - einmal messen reicht.
+            colDragRect = webTab.getBoundingClientRect();
             colDivider.setPointerCapture(e.pointerId);
             colDivider.classList.add('dragging');
             document.body.classList.add('dragging-active');
@@ -2810,22 +3341,29 @@ builtins.input = __browser_terminal_input
         });
 
         colDivider.addEventListener('pointermove', (e) => {
-            if (!colDivider.hasPointerCapture(e.pointerId)) return;
-            const rect = webTab.getBoundingClientRect();
-            let newWidth = ((e.clientX - rect.left) / rect.width) * 100;
-            if (newWidth >= 10 && newWidth <= 90) {
-                editorsColumn.style.width = `${newWidth}%`;
-                refreshCodeMirrorEditors();
-            }
+            if (colDragPointer === null || e.pointerId !== colDragPointer) return;
+            colDragX = e.clientX;
+            if (colDragFrame === null) colDragFrame = requestAnimationFrame(applyColDrag);
         });
 
         const stopColDragging = (e) => {
+            if (colDragPointer === null) return;
             if (colDivider.hasPointerCapture(e.pointerId)) {
                 colDivider.releasePointerCapture(e.pointerId);
             }
+            if (colDragFrame !== null) {
+                cancelAnimationFrame(colDragFrame);
+                colDragFrame = null;
+            }
+            colDragX = e.clientX;
+            applyColDrag();
+            colDragPointer = null;
+            colDragRect = null;
             colDivider.classList.remove('dragging');
             document.body.classList.remove('dragging-active');
-            document.body.style.cursor = 'default';
+            document.body.style.cursor = '';
+            // Erst am Ende des Drags werden die Editoren einmal sauber neu
+            // vermessen - statt hunderte Male mittendrin.
             refreshCodeMirrorEditors();
         };
 
@@ -2837,7 +3375,34 @@ builtins.input = __browser_terminal_input
             const topBox = document.getElementById(topBoxId);
             const bottomBox = document.getElementById(bottomBoxId);
 
+            // Gleiches Muster wie beim Spalten-Trenner: messen beim
+            // Drag-Start, schreiben einmal pro Frame.
+            let pointerId = null;
+            let frame = null;
+            let clientY = 0;
+            let dragTop = 0;    // Oberkante des oberen Kastens
+            let dragTotal = 0;  // Gesamthoehe beider Kaesten
+            let dragFlex = 2;   // Summe der flex-grow-Werte beider Kaesten
+
+            const applyRowDrag = () => {
+                frame = null;
+                if (pointerId === null || dragTotal <= 0) return;
+                const newTopPixel = clientY - dragTop;
+                if (newTopPixel > 40 && (dragTotal - newTopPixel) > 40) {
+                    const topRatio = newTopPixel / dragTotal;
+                    topBox.style.flex = (dragFlex * topRatio);
+                    bottomBox.style.flex = (dragFlex * (1 - topRatio));
+                }
+            };
+
             divider.addEventListener('pointerdown', (e) => {
+                const topRect = topBox.getBoundingClientRect();
+                const bottomRect = bottomBox.getBoundingClientRect();
+                pointerId = e.pointerId;
+                clientY = e.clientY;
+                dragTop = topRect.top;
+                dragTotal = topRect.height + bottomRect.height;
+                dragFlex = parseFloat(topBox.style.flexGrow || 1) + parseFloat(bottomBox.style.flexGrow || 1);
                 divider.setPointerCapture(e.pointerId);
                 divider.classList.add('dragging');
                 document.body.classList.add('dragging-active');
@@ -2845,29 +3410,26 @@ builtins.input = __browser_terminal_input
             });
 
             divider.addEventListener('pointermove', (e) => {
-                if (!divider.hasPointerCapture(e.pointerId)) return;
-                
-                const topRect = topBox.getBoundingClientRect();
-                const bottomRect = bottomBox.getBoundingClientRect();
-                const totalFlex = parseFloat(topBox.style.flexGrow || 1) + parseFloat(bottomBox.style.flexGrow || 1);
-                const totalPixel = topRect.height + bottomRect.height;
-                const newTopPixel = e.clientY - topRect.top;
-
-                if (newTopPixel > 40 && (totalPixel - newTopPixel) > 40) {
-                    const topRatio = newTopPixel / totalPixel;
-                    topBox.style.flex = (totalFlex * topRatio);
-                    bottomBox.style.flex = (totalFlex * (1 - topRatio));
-                    refreshCodeMirrorEditors();
-                }
+                if (pointerId === null || e.pointerId !== pointerId) return;
+                clientY = e.clientY;
+                if (frame === null) frame = requestAnimationFrame(applyRowDrag);
             });
 
             const stopRowDragging = (e) => {
+                if (pointerId === null) return;
                 if (divider.hasPointerCapture(e.pointerId)) {
                     divider.releasePointerCapture(e.pointerId);
                 }
+                if (frame !== null) {
+                    cancelAnimationFrame(frame);
+                    frame = null;
+                }
+                clientY = e.clientY;
+                applyRowDrag();
+                pointerId = null;
                 divider.classList.remove('dragging');
                 document.body.classList.remove('dragging-active');
-                document.body.style.cursor = 'default';
+                document.body.style.cursor = '';
                 refreshCodeMirrorEditors();
             };
 
@@ -2878,10 +3440,38 @@ builtins.input = __browser_terminal_input
         initRowDivider('divider-html-css', 'html-box', 'css-box');
         initRowDivider('divider-css-js', 'css-box', 'js-box');
 
+        // Wird nach jeder Layout-Aenderung aufgerufen (Drag-Ende, Kasten
+        // ein-/ausklappen, Theme, Sidebar, Vollbild). Mehrere Aufrufe kurz
+        // hintereinander werden zu EINEM refresh pro Frame zusammengefasst;
+        // zusaetzlich laeuft ein nachgelagerter refresh, sobald sich das
+        // Layout beruhigt hat (z.B. nach der 0,25s-Animation der Sidebar).
+        // Vorher legte JEDER Aufruf einen eigenen 50ms-Timer an.
+        let cmRefreshFrame = null;
+        let cmRefreshTimeout = null;
+
+        function refreshVisibleEditors() {
+            Object.values(cmEditors).forEach(editor => {
+                // Ein Editor in einem ausgeblendeten Tab hat keine Groesse.
+                // Ihn zu vermessen kostet nur Zeit und speichert falsche
+                // Werte (z.B. der Python-Editor bei offenem Web-Tab).
+                if (editor && editor.getWrapperElement().offsetParent !== null) {
+                    editor.refresh();
+                }
+            });
+        }
+
         function refreshCodeMirrorEditors() {
-            setTimeout(() => {
-                Object.values(cmEditors).forEach(editor => editor && editor.refresh());
-            }, 50);
+            if (cmRefreshFrame === null) {
+                cmRefreshFrame = requestAnimationFrame(() => {
+                    cmRefreshFrame = null;
+                    refreshVisibleEditors();
+                });
+            }
+            clearTimeout(cmRefreshTimeout);
+            cmRefreshTimeout = setTimeout(() => {
+                cmRefreshTimeout = null;
+                refreshVisibleEditors();
+            }, 300);
         }
 
         function toggleBox(boxId) {
@@ -2901,15 +3491,16 @@ builtins.input = __browser_terminal_input
 
         function toggleWebConsole() {
             const consoleBox = document.querySelector('.js-console-container');
-            const btn = document.getElementById('btn-toggle-console');
+            const visible = !consoleBox.classList.toggle('collapsed');
 
-            consoleBox.classList.toggle('collapsed');
+            document.getElementById('btn-toggle-console').classList.toggle('active-tab', visible);
 
-            if (consoleBox.classList.contains('collapsed')) {
-                btn.classList.remove('active-tab');
-            } else {
-                btn.classList.add('active-tab');
-            }
+            // Zweiter Schalter in der Vorschau-Kopfzeile. Er ist nur im
+            // Vollbild sichtbar (siehe CSS) - dort liegt die Leiste mit dem
+            // normalen Konsolen-Schalter ausserhalb des Vollbild-Elements,
+            // die Konsole liesse sich sonst nicht wieder einblenden.
+            const previewBtn = document.getElementById('preview-console-btn');
+            if (previewBtn) previewBtn.classList.toggle('active', visible);
         }
 
         function updateDividersAndFlex() {
@@ -2940,6 +3531,9 @@ builtins.input = __browser_terminal_input
                     const oldData = await dbGet(currentProjectKey) || {};
                     const data = {
                         type: oldData.type || "web",
+                        // Die Ordnerzuordnung gehoert zum Projekt und
+                        // darf beim Speichern nicht verloren gehen.
+                        folderId: oldData.folderId || null,
                         html: cmEditors.html.getValue(),
                         css: cmEditors.css.getValue(),
                         js: cmEditors.js.getValue(),
@@ -2956,15 +3550,73 @@ builtins.input = __browser_terminal_input
             refreshCodeMirrorEditors();
         }
 
-        function togglePreviewFullscreen() {
-            const col = document.getElementById("editors-column");
-            col.style.display = col.style.display === "none" ? "flex" : "none";
-            colDivider.style.display = col.style.display === "none" ? "none" : "block";
+        // =========================================================
+        // VOLLBILD DER LIVE-VORSCHAU (echte Fullscreen-API)
+        //
+        // Es geht IMMER der komplette Vorschau-Container ins Vollbild -
+        // also Kopfzeile + iframe + Konsole. Dadurch bleibt die Konsole im
+        // Vollbild unten sichtbar und ihr X funktioniert weiter.
+        //
+        // Es wird bewusst KEIN eigener "ist im Vollbild"-Zustand gefuehrt.
+        // Einzige Quelle der Wahrheit ist document.fullscreenElement. Der
+        // Button liest ihn ueber das fullscreenchange-Ereignis nach - so
+        // stimmt er auch, wenn der Nutzer das Vollbild mit ESC oder ueber
+        // den Browser verlaesst. Vorher wurde nur die Editor-Spalte
+        // ausgeblendet (ein nachgebautes Vollbild), ESC hatte keine
+        // Wirkung und der Button konnte nie aus dem Tritt geraten, weil es
+        // gar kein echtes Vollbild gab.
+        // =========================================================
+        function isPreviewFullscreen() {
+            const active = document.fullscreenElement || document.webkitFullscreenElement || null;
+            return active === document.getElementById("preview-container");
         }
+
+        function togglePreviewFullscreen() {
+            const container = document.getElementById("preview-container");
+            if (!container) return;
+
+            if (isPreviewFullscreen()) {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) exit.call(document);
+                return;
+            }
+
+            const request = container.requestFullscreen || container.webkitRequestFullscreen;
+            if (!request) {
+                showToast(t("fullscreenUnavailable"), "warning");
+                return;
+            }
+            const done = request.call(container);
+            if (done && done.catch) done.catch(() => showToast(t("fullscreenUnavailable"), "warning"));
+        }
+
+        function updatePreviewFullscreenButton() {
+            const btn = document.getElementById("preview-fullscreen-btn");
+            if (!btn) return;
+            const active = isPreviewFullscreen();
+            btn.classList.toggle("active", active);
+            btn.textContent = t(active ? "exitFullscreenPreviewBtn" : "fullscreenPreviewBtn");
+        }
+
+        function onFullscreenChange() {
+            updatePreviewFullscreenButton();
+            // Im Vollbild gehoert die Tastatur dem Projekt.
+            if (isPreviewFullscreen()) focusPreview();
+            // Nach dem Wechsel hat sich das gesamte Layout geaendert -
+            // die Editoren einmal neu vermessen lassen.
+            refreshCodeMirrorEditors();
+        }
+
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
         function updateWebPreview(force = false) {
             if (previewPaused && !force) return;
             clearWebConsole();
+
+            // Der aktuelle Pause-Zustand wandert direkt ins neue Dokument.
+            // So wird eine pausierte Vorschau gar nicht erst gestartet.
+            const startPaused = previewPaused === true;
 
             const consoleIntercepter = `<script>
 (function(){
@@ -2987,35 +3639,203 @@ builtins.input = __browser_terminal_input
         return false;
     };
 
-    // CodeForge Preview-Pause: Timer, Animationen und Medien werden beim
-    // Pausieren angehalten. Beim Fortsetzen lädt die Elternseite die Vorschau
-    // mit dem aktuellen Code einmal sauber neu.
+    // CodeForge Preview-Pause: ECHTES Anhalten und Fortsetzen.
+    //
+    // Beim Pausieren werden laufende Timer und Animationsframes gestoppt
+    // und ihre RESTLAUFZEIT gemerkt, CSS-Animationen und Medien angehalten.
+    // Beim Fortsetzen laufen sie mit genau dieser Restzeit weiter. Das
+    // Dokument wird dabei NICHT neu geladen - der komplette JS-Zustand
+    // (Variablen, Spielstand, Position) bleibt erhalten.
+    //
+    // Vorher hat die Elternseite beim Fortsetzen die Vorschau komplett neu
+    // gebaut. Das war kein Fortsetzen, sondern ein Neustart von vorne -
+    // genau der gemeldete Fehler.
+    //
+    // Damit zeitbasierte Animationen beim Fortsetzen nicht springen, laufen
+    // Date.now(), performance.now() und die requestAnimationFrame-
+    // Zeitstempel im Vorschau-Dokument um die Pausendauer versetzt weiter.
+    // Wird von der Elternseite gesetzt: soll dieses Dokument bereits
+    // im pausierten Zustand starten?
+    var __cfStartPaused = ${startPaused};
     var __cfPaused = false;
-    var __cfIntervals = new Set();
-    var __cfTimeouts = new Set();
-    var __cfRAFs = new Set();
-    var __cfSetInterval = window.setInterval;
-    var __cfClearInterval = window.clearInterval;
-    var __cfSetTimeout = window.setTimeout;
-    var __cfClearTimeout = window.clearTimeout;
-    var __cfRAF = window.requestAnimationFrame;
-    var __cfCancelRAF = window.cancelAnimationFrame;
-    window.setInterval = function(fn, ms) { var id = __cfSetInterval(fn, ms); __cfIntervals.add(id); return id; };
-    window.clearInterval = function(id) { __cfIntervals.delete(id); return __cfClearInterval(id); };
-    window.setTimeout = function(fn, ms) { var id = __cfSetTimeout(fn, ms); __cfTimeouts.add(id); return id; };
-    window.clearTimeout = function(id) { __cfTimeouts.delete(id); return __cfClearTimeout(id); };
-    window.requestAnimationFrame = function(fn) { var id = __cfRAF(fn); __cfRAFs.add(id); return id; };
-    window.cancelAnimationFrame = function(id) { __cfRAFs.delete(id); return __cfCancelRAF(id); };
-    window.addEventListener('message', function(e) {
-        if (!e.data || e.data.type !== 'codeforge-preview-pause') return;
+    var __cfPausedAt = 0;
+    var __cfOffset = 0;             // aufsummierte Pausendauer in ms
+    var __cfNextId = 1000000000;    // eigene IDs, kollidieren nicht mit echten
+    var __cfTimers = new Map();     // eigene ID -> Timer-Eintrag
+    var __cfFrames = new Map();     // eigene ID -> Animationsframe-Eintrag
+
+    var __cfSetInterval = window.setInterval.bind(window);
+    var __cfSetTimeout = window.setTimeout.bind(window);
+    var __cfClearTimeout = window.clearTimeout.bind(window);
+    var __cfRAF = window.requestAnimationFrame.bind(window);
+    var __cfCancelRAF = window.cancelAnimationFrame.bind(window);
+    var __cfRealNow = performance.now.bind(performance);
+    var __cfDateBase = Date.now() - __cfRealNow();
+
+    // Uhr des Vorschau-Dokuments. Steht still, solange pausiert wird.
+    function __cfVirtualNow() {
+        var real = __cfRealNow();
+        return real - __cfOffset - (__cfPaused ? (real - __cfPausedAt) : 0);
+    }
+    performance.now = function() { return __cfVirtualNow(); };
+    Date.now = function() { return __cfDateBase + __cfVirtualNow(); };
+
+    function __cfSchedule(entry) {
+        entry.start = __cfVirtualNow();
+        entry.handle = __cfSetTimeout(function() { __cfFire(entry); }, entry.remaining);
+    }
+
+    function __cfFire(entry) {
+        entry.handle = null;
+        if (entry.repeat) {
+            // Vor dem Aufruf neu planen, damit ein clearInterval INNERHALB
+            // des Callbacks den naechsten Durchlauf noch stoppen kann.
+            entry.remaining = entry.delay;
+            __cfSchedule(entry);
+        } else {
+            __cfTimers.delete(entry.id);
+        }
+        entry.fn.apply(window, entry.args);
+    }
+
+    function __cfAddTimer(fn, ms, args, repeat) {
+        var delay = Number(ms) || 0;
+        var entry = { id: __cfNextId++, fn: fn, args: args, delay: delay,
+                      remaining: delay, repeat: repeat, handle: null, start: 0 };
+        __cfTimers.set(entry.id, entry);
+        if (!__cfPaused) __cfSchedule(entry);
+        return entry.id;
+    }
+
+    window.setTimeout = function(fn, ms) {
+        if (typeof fn !== 'function') return __cfSetTimeout(fn, ms);
+        return __cfAddTimer(fn, ms, Array.prototype.slice.call(arguments, 2), false);
+    };
+    window.setInterval = function(fn, ms) {
+        if (typeof fn !== 'function') return __cfSetInterval(fn, ms);
+        return __cfAddTimer(fn, ms, Array.prototype.slice.call(arguments, 2), true);
+    };
+
+    function __cfClearTimer(id) {
+        var entry = __cfTimers.get(id);
+        if (!entry) return __cfClearTimeout(id);
+        __cfTimers.delete(id);
+        if (entry.handle !== null) __cfClearTimeout(entry.handle);
+    }
+    window.clearTimeout = __cfClearTimer;
+    window.clearInterval = __cfClearTimer;
+
+    function __cfStartFrame(id, entry) {
+        entry.handle = __cfRAF(function() {
+            __cfFrames.delete(id);
+            entry.cb(__cfVirtualNow());
+        });
+    }
+
+    window.requestAnimationFrame = function(cb) {
+        if (typeof cb !== 'function') return __cfRAF(cb);
+        var id = __cfNextId++;
+        var entry = { cb: cb, handle: null };
+        __cfFrames.set(id, entry);
+        if (!__cfPaused) __cfStartFrame(id, entry);
+        return id;
+    };
+    window.cancelAnimationFrame = function(id) {
+        var entry = __cfFrames.get(id);
+        if (!entry) return __cfCancelRAF(id);
+        __cfFrames.delete(id);
+        if (entry.handle !== null) __cfCancelRAF(entry.handle);
+    };
+
+    // CSS-Animationen: EINE Regel statt tausender Inline-Styles. Die
+    // Animation friert an ihrer aktuellen Stelle ein und laeuft beim
+    // Entfernen der Regel genau dort weiter. (Der alte Code setzte
+    // zusaetzlich transition:'none' auf jedes Element und hat das nie
+    // wieder zurueckgenommen - Uebergaenge blieben danach kaputt.)
+    var __cfPauseStyle = null;
+    var __cfPausedMedia = [];
+
+    function __cfPauseVisuals() {
+        if (!__cfPauseStyle) {
+            __cfPauseStyle = document.createElement('style');
+            __cfPauseStyle.textContent = '*, *::before, *::after { animation-play-state: paused !important; }';
+        }
+        var host = document.head || document.documentElement;
+        if (host && !__cfPauseStyle.parentNode) host.appendChild(__cfPauseStyle);
+        __cfPausedMedia = [];
+        try {
+            document.querySelectorAll('video, audio').forEach(function(m) {
+                if (!m.paused) { __cfPausedMedia.push(m); m.pause(); }
+            });
+        } catch (x) {}
+    }
+
+    function __cfResumeVisuals() {
+        if (__cfPauseStyle && __cfPauseStyle.parentNode) {
+            __cfPauseStyle.parentNode.removeChild(__cfPauseStyle);
+        }
+        __cfPausedMedia.forEach(function(m) {
+            var p = m.play();
+            if (p && p.catch) p.catch(function(){});
+        });
+        __cfPausedMedia = [];
+    }
+
+    function __cfPause() {
+        if (__cfPaused) return;
+        var now = __cfVirtualNow();
         __cfPaused = true;
-        __cfIntervals.forEach(function(id){ try { __cfClearInterval(id); } catch(x){} });
-        __cfTimeouts.forEach(function(id){ try { __cfClearTimeout(id); } catch(x){} });
-        __cfRAFs.forEach(function(id){ try { __cfCancelRAF(id); } catch(x){} });
-        __cfIntervals.clear(); __cfTimeouts.clear(); __cfRAFs.clear();
-        try { document.querySelectorAll('video, audio').forEach(function(m){ m.pause(); }); } catch(x){}
-        try { document.querySelectorAll('*').forEach(function(el){ el.style.animationPlayState='paused'; el.style.transition='none'; }); } catch(x){}
+        __cfPausedAt = __cfRealNow();
+        __cfTimers.forEach(function(entry) {
+            if (entry.handle === null) return;
+            __cfClearTimeout(entry.handle);
+            entry.handle = null;
+            var left = entry.remaining - (now - entry.start);
+            entry.remaining = left > 0 ? left : 0;
+        });
+        __cfFrames.forEach(function(entry) {
+            if (entry.handle === null) return;
+            __cfCancelRAF(entry.handle);
+            entry.handle = null;
+        });
+        __cfPauseVisuals();
+    }
+
+    function __cfResume() {
+        if (!__cfPaused) return;
+        __cfOffset += __cfRealNow() - __cfPausedAt;
+        __cfPaused = false;
+        __cfTimers.forEach(function(entry) { __cfSchedule(entry); });
+        __cfFrames.forEach(function(entry, id) { __cfStartFrame(id, entry); });
+        __cfResumeVisuals();
+    }
+
+    window.addEventListener('message', function(e) {
+        if (!e.data) return;
+        if (e.data.type === 'codeforge-preview-pause') __cfPause();
+        else if (e.data.type === 'codeforge-preview-resume') __cfResume();
     });
+
+    // Direkt pausiert starten.
+    //
+    // Das passiert HIER OBEN im <head>, also BEVOR der Projekt-Code am
+    // Ende des <body> laeuft. Dadurch startet nichts kurz an und wird
+    // dann angehalten: setTimeout, setInterval und
+    // requestAnimationFrame des Projekts werden von Anfang an nur
+    // vorgemerkt und gar nicht erst eingeplant. CSS-Animationen stehen
+    // ab dem ersten Bild still.
+    if (__cfStartPaused) {
+        __cfPause();
+        // Medien mit autoplay gibt es zu diesem Zeitpunkt noch nicht.
+        // Solange pausiert ist, wird jeder Abspielversuch sofort wieder
+        // angehalten und fuer das Fortsetzen gemerkt.
+        document.addEventListener('play', function(e) {
+            if (!__cfPaused) return;
+            var media = e.target;
+            try { media.pause(); } catch (x) {}
+            if (__cfPausedMedia.indexOf(media) === -1) __cfPausedMedia.push(media);
+        }, true);
+    }
 
     // WICHTIG: Klicks auf Links in der Vorschau abfangen. Die Vorschau läuft
     // über srcdoc und hat dadurch KEINE eigene URL - Browser lösen relative
@@ -3135,40 +3955,649 @@ builtins.input = __browser_terminal_input
             filterProjects();
         }
 
+        // =========================================================
+        // ORDNER-SYSTEM ("Bibliothek")
+        //
+        // Datenmodell - bewusst ohne zweites, konkurrierendes ID-System:
+        //
+        //   * Ordner liegen als EIN Datensatz im bestehenden IndexedDB-
+        //     Store unter dem Schluessel "codeforge_folders". Der
+        //     Schluessel beginnt NICHT mit "codepen_", deshalb taucht er
+        //     in dbGetAllKeys() (das nur Projekte liefert) gar nicht auf.
+        //     Bestehende Projekte bleiben dadurch voellig unberuehrt.
+        //
+        //   * Ein Projekt merkt sich seinen Ordner in data.folderId.
+        //     Fehlt das Feld oder ist es null, liegt das Projekt auf der
+        //     obersten Ebene - genau das Verhalten aller Projekte, die es
+        //     bisher schon gab.
+        //
+        //   * Ordner-IDs sind stabil und haben nichts mit dem Namen zu
+        //     tun. Umbenennen aendert deshalb kein einziges Projekt.
+        //
+        // Bewusste Entscheidung: NUR EINE Ebene, keine Unterordner. Der
+        // Mehrwert waere hier gering, die Kosten (Zyklenpruefung,
+        // Breadcrumbs, rekursives Loeschen, Merge beim Import) dagegen
+        // hoch. Das Datenmodell bleibt trotzdem erweiterbar: ein Ordner
+        // koennte spaeter ein eigenes parentId-Feld bekommen.
+        // =========================================================
+        const foldersKey = "codeforge_folders";
+        let foldersCache = null;
+        let folderNameById = new Map();
+        let openFolders = new Set(readOpenFolders());
+
+        function readOpenFolders() {
+            try {
+                const raw = JSON.parse(localStorage.getItem("codeforge_open_folders") || "[]");
+                return Array.isArray(raw) ? raw.filter(x => typeof x === "string") : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function persistOpenFolders() {
+            try {
+                localStorage.setItem("codeforge_open_folders", JSON.stringify([...openFolders]));
+            } catch (e) {}
+        }
+
+        function makeFolderId() {
+            return "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        // Macht aus beliebigen - auch beschaedigten - Eingabedaten immer
+        // eine gueltige Ordnerliste: nur Objekte mit Namen, keine leeren
+        // Namen, keine doppelten IDs. Wird auch beim Import benutzt.
+        function normalizeFolderList(list) {
+            const out = [];
+            const seen = new Set();
+            if (!Array.isArray(list)) return out;
+            for (const raw of list) {
+                if (!raw || typeof raw !== "object") continue;
+                const name = typeof raw.name === "string" ? raw.name.trim() : "";
+                if (!name) continue;
+                let id = (typeof raw.id === "string" && raw.id) ? raw.id : makeFolderId();
+                while (seen.has(id)) id = makeFolderId();
+                seen.add(id);
+                out.push({ id, name });
+            }
+            return out;
+        }
+
+        async function getFolders() {
+            if (foldersCache) return foldersCache;
+            let stored = null;
+            try {
+                stored = await dbGet(foldersKey);
+            } catch (e) {}
+            foldersCache = normalizeFolderList(stored && stored.folders);
+            return foldersCache;
+        }
+
+        async function saveFolders(folders) {
+            foldersCache = normalizeFolderList(folders);
+            await dbSet(foldersKey, { version: 1, folders: foldersCache });
+        }
+
+        // Liefert die GUELTIGE Ordner-ID eines Projekts oder null (= oberste
+        // Ebene). Zeigt ein Projekt auf einen geloeschten oder unbekannten
+        // Ordner, taucht es wieder ganz oben auf statt unsichtbar zu werden.
+        // Die gespeicherten Daten werden dabei absichtlich nicht angefasst.
+        function resolveFolderId(folderId, folders) {
+            if (!folderId || typeof folderId !== "string") return null;
+            return folders.some(f => f.id === folderId) ? folderId : null;
+        }
+
+        async function folderNameTaken(name, exceptId) {
+            const key = String(name).trim().toLowerCase();
+            return (await getFolders()).some(f => f.id !== exceptId && f.name.trim().toLowerCase() === key);
+        }
+
+        async function projectKeysInFolder(folderId) {
+            const keys = await dbGetAllKeys();
+            const out = [];
+            for (const key of keys) {
+                const data = await dbGet(key);
+                if (data && data.folderId === folderId) out.push(key);
+            }
+            return out;
+        }
+
+        // Verschiebt NUR die Zuordnung. Der Code des Projekts wird dabei
+        // nicht angefasst. Gibt true zurueck, wenn sich wirklich etwas
+        // geaendert hat.
+        async function moveProjectToFolder(key, folderId) {
+            const data = await dbGet(key);
+            if (!data) return false;
+            const target = resolveFolderId(folderId, await getFolders());
+            if ((data.folderId || null) === target) return false;
+            data.folderId = target;
+            await dbSet(key, data);
+            return true;
+        }
+
+        // ---------------- Ordner anlegen / umbenennen / loeschen --------
+        async function createFolderFromDialog() {
+            const name = await openTextDialog(t("newFolderTitle"), t("folderNameLabel"), "");
+            if (name === null) return;
+            const clean = String(name).trim();
+            if (!clean) return showToast(t("enterFolderName"), "warning");
+            if (await folderNameTaken(clean, null)) return showToast(t("folderNameExists"), "warning");
+
+            const folders = (await getFolders()).slice();
+            const folder = { id: makeFolderId(), name: clean };
+            folders.push(folder);
+            await saveFolders(folders);
+            openFolders.add(folder.id);
+            persistOpenFolders();
+            await loadProjects();
+            showToast(t("folderCreated", clean), "success");
+        }
+
+        async function renameFolder(folderId) {
+            const folders = (await getFolders()).slice();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+            const name = await openTextDialog(t("renameFolderTitle"), t("folderNameLabel"), folder.name);
+            if (name === null) return;
+            const clean = String(name).trim();
+            if (!clean || clean === folder.name) return;
+            if (await folderNameTaken(clean, folderId)) return showToast(t("folderNameExists"), "warning");
+
+            // Nur der Name aendert sich - die ID bleibt, also bleibt auch
+            // jede Projektzuordnung unveraendert erhalten.
+            folder.name = clean;
+            await saveFolders(folders);
+            await loadProjects();
+            showToast(t("folderRenamed", clean), "success");
+        }
+
+        async function deleteFolder(folderId) {
+            const folders = await getFolders();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+
+            const members = await projectKeysInFolder(folderId);
+            const ok = await openConfirmDialog(
+                t("deleteFolderTitle"),
+                members.length ? t("deleteFolderMsg", folder.name, members.length)
+                               : t("deleteEmptyFolderMsg", folder.name));
+            if (!ok) return;
+
+            // Der Ordner geht in den Papierkorb, sein Inhalt bleibt
+            // bestehen und wandert auf die oberste Ebene.
+            const moved = await moveFolderToTrash(folderId);
+            await loadProjects();
+            showToast(moved ? t("folderDeletedKept", folder.name, moved)
+                            : t("folderDeleted", folder.name), "success");
+        }
+
+        function toggleFolderOpen(folderId) {
+            if (openFolders.has(folderId)) openFolders.delete(folderId);
+            else openFolders.add(folderId);
+            persistOpenFolders();
+            applyLibraryVisibility();
+        }
+
+        // =========================================================
+        // PAPIERKORB ("Zuletzt geloescht")
+        //
+        // Geloeschtes verschwindet nicht sofort, sondern landet in einem
+        // eigenen Datensatz unter "codeforge_trash". Der Schluessel
+        // beginnt nicht mit "codepen_", taucht also in der Projektliste
+        // nie auf.
+        //
+        // Ein Eintrag merkt sich alles, was fuer die Wiederherstellung an
+        // der URSPRUENGLICHEN Stelle noetig ist:
+        //
+        //   Projekt: der komplette Datensatz + Ordner-ID + Ordner-NAME.
+        //            Der Name ist der Rettungsanker, falls der Ordner
+        //            zwischenzeitlich selbst geloescht wurde.
+        //   Ordner:  Name, ID und die Projekte, die damals darin lagen.
+        //            Die Projekte selbst werden NICHT mitgeloescht - sie
+        //            wandern wie bisher auf die oberste Ebene.
+        //
+        // Wiederhergestellt wird nie "irgendwohin": erst die alte ID,
+        // dann ein Ordner mit demselben Namen, sonst oberste Ebene. So
+        // kann keine ungueltige Referenz und kein Geisterprojekt
+        // entstehen.
+        // =========================================================
+        const trashKey = "codeforge_trash";
+        let trashCache = null;
+
+        function makeTrashId() {
+            return "t_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        // Macht aus beliebigen - auch beschaedigten - Daten immer eine
+        // gueltige Liste. Doppelte IDs koennen dabei nicht ueberleben.
+        function normalizeTrashList(list) {
+            if (!Array.isArray(list)) return [];
+            const out = [];
+            const seen = new Set();
+            for (const raw of list) {
+                if (!raw || typeof raw !== "object") continue;
+                if (raw.kind !== "project" && raw.kind !== "folder") continue;
+                const name = typeof raw.name === "string" ? raw.name.trim() : "";
+                if (!name) continue;
+                let id = (typeof raw.id === "string" && raw.id) ? raw.id : makeTrashId();
+                while (seen.has(id)) id = makeTrashId();
+                seen.add(id);
+                out.push({
+                    id,
+                    kind: raw.kind,
+                    name,
+                    deletedAt: typeof raw.deletedAt === "number" ? raw.deletedAt : Date.now(),
+                    data: (raw.kind === "project" && raw.data && typeof raw.data === "object") ? raw.data : null,
+                    folderId: typeof raw.folderId === "string" ? raw.folderId : null,
+                    folderName: typeof raw.folderName === "string" ? raw.folderName : null,
+                    memberKeys: Array.isArray(raw.memberKeys) ? raw.memberKeys.filter(k => typeof k === "string") : []
+                });
+            }
+            out.sort((a, b) => b.deletedAt - a.deletedAt);   // neueste zuerst
+            return out;
+        }
+
+        async function getTrash() {
+            if (trashCache) return trashCache;
+            let stored = null;
+            try { stored = await dbGet(trashKey); } catch (e) {}
+            trashCache = normalizeTrashList(stored && stored.items);
+            return trashCache;
+        }
+
+        async function saveTrash(items) {
+            trashCache = normalizeTrashList(items);
+            await dbSet(trashKey, { version: 1, items: trashCache });
+            updateTrashBadge();
+        }
+
+        async function moveProjectToTrash(key) {
+            const data = await dbGet(key);
+            if (!data) return false;
+            const folders = await getFolders();
+            const folderId = resolveFolderId(data.folderId, folders);
+            const folder = folderId ? folders.find(f => f.id === folderId) : null;
+
+            const items = (await getTrash()).slice();
+            items.unshift({
+                id: makeTrashId(), kind: "project", name: key.replace("codepen_", ""),
+                deletedAt: Date.now(), data: Object.assign({}, data),
+                folderId, folderName: folder ? folder.name : null, memberKeys: []
+            });
+            await saveTrash(items);
+            await dbDelete(key);
+            return true;
+        }
+
+        async function moveFolderToTrash(folderId) {
+            const folders = await getFolders();
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return false;
+
+            const members = await projectKeysInFolder(folderId);
+            const items = (await getTrash()).slice();
+            items.unshift({
+                id: makeTrashId(), kind: "folder", name: folder.name,
+                deletedAt: Date.now(), data: null,
+                folderId: folder.id, folderName: folder.name, memberKeys: members.slice()
+            });
+            await saveTrash(items);
+
+            // Der Inhalt wird NIE mitgeloescht.
+            for (const key of members) await moveProjectToFolder(key, null);
+            await saveFolders(folders.filter(f => f.id !== folderId));
+            openFolders.delete(folderId);
+            persistOpenFolders();
+            return members.length;
+        }
+
+        // Freier Projektschluessel - dieselbe Regel wie beim Import, damit
+        // eine Wiederherstellung nie ein vorhandenes Projekt ueberschreibt.
+        async function freeProjectKey(baseName) {
+            let key = "codepen_" + baseName;
+            let counter = 1;
+            while (await dbGet(key)) {
+                key = `codepen_${baseName}_Kopie${counter > 1 ? counter : ""}`;
+                counter++;
+            }
+            return key;
+        }
+
+        async function restoreTrashItem(id) {
+            const items = await getTrash();
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+
+            if (item.kind === "project") {
+                const folders = await getFolders();
+                let target = resolveFolderId(item.folderId, folders);
+                if (!target && item.folderName) {
+                    const byName = folders.find(f =>
+                        f.name.trim().toLowerCase() === item.folderName.trim().toLowerCase());
+                    if (byName) target = byName.id;
+                }
+                const data = Object.assign({}, item.data || { type: "web", html: "", css: "", js: "", py: "" });
+                data.folderId = target;
+                const key = await freeProjectKey(item.name);
+                await dbSet(key, data);
+                if (target) { openFolders.add(target); persistOpenFolders(); }
+                showToast(t("restoredProject", key.replace("codepen_", "")), "success");
+            } else {
+                const folders = (await getFolders()).slice();
+                // Alte ID wiederverwenden, wenn sie frei ist.
+                const idFree = item.folderId && !folders.some(f => f.id === item.folderId);
+                const newId = idFree ? item.folderId : makeFolderId();
+                let name = item.name;
+                let n = 2;
+                while (folders.some(f => f.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+                    name = item.name + " (" + (n++) + ")";
+                }
+                folders.push({ id: newId, name });
+                await saveFolders(folders);
+
+                // Frueheren Inhalt zurueckholen - aber NUR Projekte, die es
+                // noch gibt und die der Nutzer seitdem nicht selbst in einen
+                // anderen Ordner einsortiert hat. Sonst wuerde die
+                // Wiederherstellung seine spaetere Arbeit ueberschreiben.
+                let moved = 0;
+                const current = await getFolders();
+                for (const key of item.memberKeys) {
+                    const data = await dbGet(key);
+                    if (!data) continue;
+                    if (resolveFolderId(data.folderId, current)) continue;
+                    if (await moveProjectToFolder(key, newId)) moved++;
+                }
+                openFolders.add(newId);
+                persistOpenFolders();
+                showToast(moved ? t("restoredFolderWith", name, moved) : t("restoredFolder", name), "success");
+            }
+
+            await saveTrash(items.filter(i => i.id !== id));
+            await loadProjects();
+            renderTrash();
+        }
+
+        async function purgeTrashItem(id) {
+            const items = await getTrash();
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+            const ok = await openConfirmDialog(t("purgeTitle"), t("purgeMsg", item.name));
+            if (!ok) return;
+            await saveTrash(items.filter(i => i.id !== id));
+            renderTrash();
+            showToast(t("purged", item.name), "success");
+        }
+
+        async function emptyTrash() {
+            const items = await getTrash();
+            if (!items.length) return;
+            const ok = await openConfirmDialog(t("emptyTrashTitle"), t("emptyTrashMsg", items.length));
+            if (!ok) return;
+            await saveTrash([]);
+            renderTrash();
+            showToast(t("trashEmptied"), "success");
+        }
+
+        // ---------------- Papierkorb-Oberflaeche ------------------------
+        function openTrashModal() {
+            const modal = document.getElementById("trash-modal");
+            if (!modal) return;
+            modal.classList.add("open");
+            renderTrash();
+        }
+
+        function closeTrashModal() {
+            const modal = document.getElementById("trash-modal");
+            if (modal) modal.classList.remove("open");
+        }
+
+        function formatDeletedAt(ts) {
+            const minutes = Math.floor((Date.now() - ts) / 60000);
+            if (minutes < 1) return t("justNow");
+            if (minutes < 60) return t("minutesAgo", minutes);
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return t("hoursAgo", hours);
+            const days = Math.floor(hours / 24);
+            if (days < 30) return t("daysAgo", days);
+            return new Date(ts).toLocaleDateString();
+        }
+
+        function trashMetaText(item) {
+            const when = formatDeletedAt(item.deletedAt);
+            if (item.kind === "folder") {
+                return item.memberKeys.length
+                    ? t("trashFolderMeta", item.memberKeys.length, when)
+                    : t("trashFolderMetaEmpty", when);
+            }
+            return item.folderName ? t("trashProjectMeta", item.folderName, when)
+                                   : t("trashProjectMetaRoot", when);
+        }
+
+        async function renderTrash() {
+            const box = document.getElementById("trash-list");
+            if (!box) return;
+            const items = await getTrash();
+
+            const emptyBtn = document.getElementById("trash-empty-btn");
+            if (emptyBtn) emptyBtn.style.display = items.length ? "" : "none";
+
+            box.innerHTML = "";
+            if (!items.length) {
+                const empty = document.createElement("div");
+                empty.className = "trash-empty-state";
+                empty.textContent = t("trashEmptyState");
+                box.appendChild(empty);
+                return;
+            }
+
+            items.forEach(item => {
+                const row = document.createElement("div");
+                row.className = "trash-row";
+
+                const icon = document.createElement("span");
+                icon.className = "trash-icon";
+                icon.textContent = item.kind === "folder" ? "📁"
+                    : ((item.data && item.data.type === "python") ? "🐍" : "🌐");
+
+                const info = document.createElement("div");
+                info.className = "trash-info";
+                const name = document.createElement("div");
+                name.className = "trash-name";
+                name.textContent = item.name;
+                const meta = document.createElement("div");
+                meta.className = "trash-meta";
+                meta.textContent = trashMetaText(item);
+                info.append(name, meta);
+
+                const restore = document.createElement("button");
+                restore.className = "trash-btn trash-restore";
+                restore.textContent = t("restoreBtn");
+                restore.addEventListener("click", () => restoreTrashItem(item.id));
+
+                const purge = document.createElement("button");
+                purge.className = "trash-btn trash-purge";
+                purge.textContent = t("purgeBtn");
+                purge.addEventListener("click", () => purgeTrashItem(item.id));
+
+                row.append(icon, info, restore, purge);
+                box.appendChild(row);
+            });
+        }
+
+        // Zaehler an den Papierkorb-Schaltern (Seitenleiste + Startseite).
+        async function updateTrashBadge() {
+            const count = (await getTrash()).length;
+            document.querySelectorAll("[data-trash-count]").forEach(el => {
+                el.textContent = count ? String(count) : "";
+                el.style.display = count ? "" : "none";
+            });
+        }
+
+
+        // ---------------- Zeilen der Bibliothek -------------------------
+        function makeLibRow(className) {
+            const li = document.createElement("li");
+            li.className = "lib-item " + className;
+            return li;
+        }
+
+        function makeLibAction(symbol, title, handler) {
+            const btn = document.createElement("button");
+            btn.className = "lib-action";
+            btn.type = "button";
+            btn.textContent = symbol;
+            btn.title = title;
+            btn.setAttribute("aria-label", title);
+            btn.addEventListener("click", (e) => { e.stopPropagation(); handler(); });
+            return btn;
+        }
+
+        function makeFolderRow(folder, count) {
+            const li = makeLibRow("lib-folder");
+            li.dataset.folderId = folder.id;
+            li.dataset.name = folder.name;
+            if (openFolders.has(folder.id)) li.classList.add("open");
+
+            const chevron = document.createElement("span");
+            chevron.className = "lib-chevron";
+            chevron.textContent = "▸";
+
+            const icon = document.createElement("span");
+            icon.className = "lib-icon";
+            icon.textContent = "📁";
+
+            const name = document.createElement("span");
+            name.className = "lib-name";
+            name.textContent = folder.name;
+
+            const badge = document.createElement("span");
+            badge.className = "lib-count";
+            badge.textContent = String(count);
+
+            const actions = document.createElement("span");
+            actions.className = "lib-actions";
+            actions.appendChild(makeLibAction("✎", t("renameFolderTitle"), () => renameFolder(folder.id)));
+            actions.appendChild(makeLibAction("✕", t("deleteFolderTitle"), () => deleteFolder(folder.id)));
+
+            li.append(chevron, icon, name, badge, actions);
+            li.addEventListener("click", () => toggleFolderOpen(folder.id));
+            return li;
+        }
+
+        function makeProjectRow(project) {
+            const li = makeLibRow("lib-project" + (project.folderId ? " in-folder" : ""));
+            li.dataset.key = project.key;
+            li.dataset.type = project.type;
+            li.dataset.name = project.name;
+            li.dataset.parent = project.folderId || "";
+            if (project.key === currentProjectKey) li.classList.add("active");
+
+            const icon = document.createElement("span");
+            icon.className = "lib-icon";
+            icon.textContent = project.type === "python" ? "🐍" : "🌐";
+
+            const name = document.createElement("span");
+            name.className = "lib-name";
+            name.textContent = project.name;
+
+            const hint = document.createElement("span");
+            hint.className = "lib-hint";
+
+            // Umbenennen/Loeschen direkt an der Zeile - dasselbe Muster wie
+            // bei den Ordnern, und die Seitenleiste bleibt dadurch schlank.
+            const actions = document.createElement("span");
+            actions.className = "lib-actions";
+            actions.appendChild(makeLibAction("\u270e", t("renameProjectTitle"), () => renameProject(project.key)));
+            actions.appendChild(makeLibAction("\u2715", t("deleteProjectTitle"), () => deleteProject(project.key)));
+
+            li.append(icon, name, hint, actions);
+            li.addEventListener("click", () => {
+                // Nach einem Ziehen soll der abschliessende Klick das
+                // Projekt nicht zusaetzlich oeffnen.
+                if (suppressLibraryClick) return;
+                openProject(project.key);
+            });
+            return li;
+        }
+
+        function makeTextRow(className, text, parentId) {
+            const li = makeLibRow(className);
+            li.textContent = text;
+            if (parentId) li.dataset.parent = parentId;
+            return li;
+        }
+
+        // ---------------- Bibliothek aufbauen ---------------------------
+        // Heisst weiterhin loadProjects(), weil genau dieser Aufruf an
+        // vielen Stellen steht (Start, Anlegen, Umbenennen, Loeschen,
+        // Import). Aus der frueheren flachen Liste wird eine Liste mit
+        // zwei Ebenen: Ordner (mit Inhalt) und darunter die Projekte
+        // ohne Ordner.
+        let libraryRenderToken = 0;
+
         async function loadProjects() {
             const list = document.getElementById("project-list");
-            list.innerHTML = "";
-            const keys = await dbGetAllKeys();
+            if (!list) return;
 
+            // Zwei gleichzeitige Aufbauten (z.B. Start + Sprachwechsel)
+            // wuerden sich sonst ins Gehege kommen: beide leeren die Liste,
+            // beide haengen danach ihre Zeilen an - die Liste waere doppelt.
+            // Deshalb: erst ALLE Daten lesen, dann pruefen, ob dieser Aufbau
+            // noch der aktuelle ist, und erst dann in einem Rutsch zeichnen.
+            const token = ++libraryRenderToken;
+
+            const folders = await getFolders();
+            folderNameById = new Map(folders.map(f => [f.id, f.name]));
+
+            const keys = await dbGetAllKeys();
+            const projects = [];
             for (const key of keys) {
                 try {
                     const data = await dbGet(key);
                     if (!data) continue;
-
-                    const name = key.replace("codepen_", "");
-                    const projectType = data.type || "web";
-                    const typeLabel = projectType === "python" ? "[Python]" : "[Web]";
-                    
-                    const li = document.createElement("li");
-                    li.dataset.key = key;
-                    li.dataset.type = projectType;
-                    li.innerText = `${typeLabel} ${name}`;
-                    
-                    if (key === currentProjectKey) {
-                        li.classList.add("active");
-                    }
-
-                    li.onclick = function() {
-                        openProject(key);
-                    };
-                    
-                    list.appendChild(li);
+                    projects.push({
+                        key,
+                        name: key.replace("codepen_", ""),
+                        type: data.type === "python" ? "python" : "web",
+                        folderId: resolveFolderId(data.folderId, folders)
+                    });
                 } catch (e) {
                     console.error("Fehler beim Laden:", key, e);
                 }
             }
 
-            filterProjects();
+            if (token !== libraryRenderToken) return;   // ein neuerer Aufbau hat uebernommen
+            list.innerHTML = "";
+
+            const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+            projects.sort(byName);
+            const sortedFolders = folders.slice().sort(byName);
+
+            if (!sortedFolders.length && !projects.length) {
+                list.appendChild(makeTextRow("lib-note", t("emptyLibrary")));
+                return;
+            }
+
+            for (const folder of sortedFolders) {
+                const children = projects.filter(p => p.folderId === folder.id);
+                list.appendChild(makeFolderRow(folder, children.length));
+                children.forEach(p => list.appendChild(makeProjectRow(p)));
+                list.appendChild(makeTextRow("lib-empty", t("emptyFolder"), folder.id));
+            }
+
+            const rootProjects = projects.filter(p => !p.folderId);
+            if (sortedFolders.length) {
+                const header = makeTextRow("lib-root-header", t("rootSectionLabel"));
+                header.dataset.rootDrop = "1";
+                list.appendChild(header);
+            }
+            rootProjects.forEach(p => list.appendChild(makeProjectRow(p)));
+
+            const noResults = makeTextRow("lib-note", t("noSearchResults"));
+            noResults.id = "lib-no-results";
+            list.appendChild(noResults);
+
+            applyLibraryVisibility();
         }
 
         async function openProject(key) {
@@ -3216,9 +4645,11 @@ builtins.input = __browser_terminal_input
             const pyTab = document.getElementById("python-tab");
 
             // Beim Wechsel des Projekts immer eine frische, aktive Live-Vorschau.
-            // Die Pause ist eine Eigenschaft der aktuellen Vorschau, nicht des Projekts.
-            previewPaused = false;
-            setPreviewPauseButton(false);
+            // Die Pause ist eine Eigenschaft der aktuellen Vorschau, nicht
+            // des Projekts. Ist die Einstellung "beim Oeffnen pausieren"
+            // aktiv, wird die Vorschau gleich PAUSIERT aufgebaut.
+            previewPaused = shouldAutoPauseOnOpen();
+            setPreviewPauseButton(previewPaused);
 
             if (projectType === "python") {
                 btnWeb.style.display = "none";
@@ -3232,7 +4663,10 @@ builtins.input = __browser_terminal_input
 
                 pyTab.classList.remove("active");
                 webTab.classList.add("active");
-                updateWebPreview();
+                // force = true, weil updateWebPreview() bei gesetztem
+                // previewPaused sonst gar nichts bauen wuerde. Der
+                // Pause-Zustand wandert ins Dokument selbst.
+                updateWebPreview(true);
             }
 
             document.querySelectorAll("#project-list li").forEach(li => {
@@ -3242,6 +4676,20 @@ builtins.input = __browser_terminal_input
                     li.classList.remove("active");
                 }
             });
+
+            // Liegt das geladene Projekt in einem Ordner, wird genau
+            // dieser aufgeklappt - sonst waere das gerade geoeffnete
+            // Projekt in der Liste unsichtbar. Andere Ordner bleiben
+            // unberuehrt, es wird nie einer zugeklappt.
+            const parentFolder = resolveFolderId(data.folderId, await getFolders());
+            if (parentFolder && !openFolders.has(parentFolder)) {
+                openFolders.add(parentFolder);
+                persistOpenFolders();
+            }
+            applyLibraryVisibility();
+
+            const activeRow = document.querySelector("#project-list li.lib-project.active");
+            if (activeRow) activeRow.scrollIntoView({ block: "nearest" });
 
             renderFileTree();
             refreshCodeMirrorEditors();
@@ -3253,6 +4701,7 @@ builtins.input = __browser_terminal_input
             
             const data = {
                 type: oldData.type || "web",
+                folderId: oldData.folderId || null,
                 html: cmEditors.html.getValue(),
                 css: cmEditors.css.getValue(),
                 js: cmEditors.js.getValue(),
@@ -3263,64 +4712,505 @@ builtins.input = __browser_terminal_input
             showToast(t("projectSaved"), "success");
         }
 
-        async function renameCurrentProject() {
-            if (!currentProjectKey) return showToast(t("selectProjectFirst"), "warning");
-            const oldName = currentProjectKey.replace("codepen_", "");
+        // Umbenennen fuer EIN bestimmtes Projekt (Zeilen-Aktion, Befehls-
+        // palette und der Button in der Seitenleiste benutzen dasselbe).
+        async function renameProject(key) {
+            if (!key) return showToast(t("selectProjectFirst"), "warning");
+            const oldName = key.replace("codepen_", "");
             const newName = await openTextDialog(t("renameProjectTitle"), t("renameProjectLabel"), oldName);
-            if (!newName || newName.trim() === oldName) return;
+            if (newName === null) return;
 
-            const cleanName = newName.trim();
+            const cleanName = String(newName).trim();
             if (!cleanName) return showToast(t("enterProjectName"), "warning");
+            if (cleanName === oldName) return;
             const newKey = "codepen_" + cleanName;
-            if (await dbGet(newKey)) {
-                return showToast(t("nameExists"), "warning");
-            }
+            if (await dbGet(newKey)) return showToast(t("nameExists"), "warning");
 
-            const data = await dbGet(currentProjectKey);
+            const data = await dbGet(key);
+            if (!data) return;
             await dbSet(newKey, data);
-            await dbDelete(currentProjectKey);
+            await dbDelete(key);
 
-            currentProjectKey = newKey;
-            await loadProjects();
-            await openProject(newKey);
+            // Der Schluessel IST der Name. Ohne diese Zeile wuerde das
+            // Projekt aus "Zuletzt geoeffnet" verschwinden, weil dort noch
+            // der alte Schluessel steht.
+            recentProjects = recentProjects.map(k => (k === key ? newKey : k));
+            localStorage.setItem("codeforge_recent", JSON.stringify(recentProjects));
+
+            if (currentProjectKey === key) {
+                currentProjectKey = newKey;
+                await loadProjects();
+                await openProject(newKey);
+            } else {
+                await loadProjects();
+            }
         }
 
-        async function deleteCurrentProject() {
-            if (!currentProjectKey) return showToast(t("selectProjectFirst"), "warning");
-            const name = currentProjectKey.replace("codepen_", "");
+        async function renameCurrentProject() {
+            await renameProject(currentProjectKey);
+        }
+
+        // Loeschen fuer EIN bestimmtes Projekt. Es wird NICHT endgueltig
+        // entfernt, sondern wandert in den Papierkorb.
+        async function deleteProject(key) {
+            if (!key) return showToast(t("selectProjectFirst"), "warning");
+            const name = key.replace("codepen_", "");
             const ok = await openConfirmDialog(t("deleteProjectTitle"), t("deleteProjectMsg", name));
             if (!ok) return;
 
-            await dbDelete(currentProjectKey);
-            recentProjects = recentProjects.filter(k => k !== currentProjectKey);
+            await moveProjectToTrash(key);
+            recentProjects = recentProjects.filter(k => k !== key);
             localStorage.setItem("codeforge_recent", JSON.stringify(recentProjects));
-            currentProjectKey = null;
-            clearWebConsole();
 
-            const keys = await dbGetAllKeys();
+            const wasOpen = (currentProjectKey === key);
+            if (wasOpen) {
+                currentProjectKey = null;
+                clearWebConsole();
+            }
             await loadProjects();
-            if (keys.length > 0) {
-                await openProject(keys[0]);
-            } else {
-                await createDefaultProject();
+
+            if (wasOpen) {
+                const keys = await dbGetAllKeys();
+                if (keys.length > 0) await openProject(keys[0]);
+                else await createDefaultProject();
+            }
+            showToast(t("movedToTrash", name), "success");
+        }
+
+        async function deleteCurrentProject() {
+            await deleteProject(currentProjectKey);
+        }
+
+        // =========================================================
+        // SUCHE
+        //
+        // Das bisherige Verhalten bleibt: Eingabe im Suchfeld -> Zeilen
+        // werden ein-/ausgeblendet, und der Typ-Filter (Alle/Web/Python)
+        // wirkt zusaetzlich. Neu kommt der Ordner-Teil dazu:
+        //
+        //   Sucheingabe
+        //     -> Projekte durchsuchen (Projektname)
+        //      + Ordner durchsuchen   (Ordnername)
+        //     -> Treffer zusammenfuehren: ein Ordner-Treffer zeigt auch
+        //        SEINEN INHALT (deshalb findet "Horror" auch "Resident
+        //        Evil"), und der Grund dafuer steht als "in Horror Games"
+        //        hinter dem Projekt.
+        //     -> Reihenfolge: Ordner oben, darunter ihr Inhalt, darunter
+        //        die Projekte ohne Ordner.
+        //
+        // Einzige bewusste Aenderung am alten Verhalten: gesucht wird im
+        // PROJEKTNAMEN statt im kompletten Zeilentext. Vorher stand in
+        // jeder Zeile auch "[Web]"/"[Python]" - die Suche nach "web" hat
+        // deshalb jedes Webprojekt getroffen. Dafuer gibt es den Typ-Filter.
+        //
+        // filterProjects() bleibt der Einstiegspunkt, weil das Suchfeld
+        // genau diesen Namen im onkeyup aufruft.
+        // =========================================================
+        function filterProjects() {
+            applyLibraryVisibility();
+        }
+
+        function applyLibraryVisibility() {
+            const list = document.getElementById("project-list");
+            if (!list) return;
+
+            const input = document.getElementById("search-input");
+            const query = (input ? input.value : "").trim().toLowerCase();
+            const searching = query.length > 0;
+            const typeFiltered = selectedTypeFilter !== "all";
+
+            const folderRows = [...list.querySelectorAll("li.lib-folder")];
+            const projectRows = [...list.querySelectorAll("li.lib-project")];
+
+            // 1) Ordner, deren NAME zur Suche passt.
+            const folderNameHit = new Set();
+            if (searching) {
+                folderRows.forEach(li => {
+                    if (li.dataset.name.toLowerCase().includes(query)) folderNameHit.add(li.dataset.folderId);
+                });
+            }
+
+            // 2) Projekte: eigener Name ODER Ordner-Kontext.
+            const hitsPerFolder = new Map();
+            let rootHits = 0;
+            let anythingVisible = false;
+
+            projectRows.forEach(li => {
+                const parent = li.dataset.parent || "";
+                const typeOk = !typeFiltered || li.dataset.type === selectedTypeFilter;
+                const nameHit = !searching || li.dataset.name.toLowerCase().includes(query);
+                const viaFolder = searching && !nameHit && folderNameHit.has(parent);
+                const match = typeOk && (nameHit || viaFolder);
+
+                // Waehrend einer Suche werden Treffer sichtbar gemacht,
+                // auch wenn ihr Ordner gerade zugeklappt ist.
+                const parentVisible = !parent || searching || openFolders.has(parent);
+                const visible = match && parentVisible;
+
+                li.style.display = visible ? "flex" : "none";
+                li.classList.toggle("via-folder", visible && viaFolder);
+                const hint = li.querySelector(".lib-hint");
+                if (hint) {
+                    hint.textContent = (visible && viaFolder)
+                        ? t("inFolderHint", folderNameById.get(parent) || "")
+                        : "";
+                }
+
+                if (match) {
+                    anythingVisible = anythingVisible || visible;
+                    if (parent) hitsPerFolder.set(parent, (hitsPerFolder.get(parent) || 0) + 1);
+                    else rootHits++;
+                }
+            });
+
+            // 3) Ordnerzeilen: sichtbar, wenn der Ordner selbst passt oder
+            //    mindestens ein Kind passt.
+            const visibleFolders = new Set();
+            folderRows.forEach(li => {
+                const id = li.dataset.folderId;
+                const hits = hitsPerFolder.get(id) || 0;
+                let visible = true;
+                if (searching) visible = folderNameHit.has(id) || hits > 0;
+                else if (typeFiltered) visible = hits > 0;
+
+                li.style.display = visible ? "flex" : "none";
+                li.classList.toggle("open", searching ? visible : openFolders.has(id));
+                if (visible) {
+                    visibleFolders.add(id);
+                    anythingVisible = true;
+                }
+            });
+
+            // 4) "Leer"-Zeile nur in einem sichtbaren, offenen Ordner ohne
+            //    sichtbaren Inhalt.
+            list.querySelectorAll("li.lib-empty").forEach(li => {
+                const id = li.dataset.parent;
+                const open = searching ? visibleFolders.has(id) : openFolders.has(id);
+                const show = visibleFolders.has(id) && open && !(hitsPerFolder.get(id) || 0);
+                li.style.display = show ? "flex" : "none";
+            });
+
+            // 5) Zwischenueberschrift der obersten Ebene.
+            const header = list.querySelector("li.lib-root-header");
+            if (header) header.style.display = rootHits > 0 ? "flex" : "none";
+
+            // 6) Leerer Zustand.
+            const note = document.getElementById("lib-no-results");
+            if (note) note.style.display = (!anythingVisible && (searching || typeFiltered)) ? "flex" : "none";
+        }
+
+        // =========================================================
+        // DRAG & DROP in der Bibliothek (zeigerbasiert)
+        //
+        // WARUM NICHT die HTML5-Drag-and-Drop-API:
+        // Waehrend eines nativen HTML5-Drags schickt der Browser KEINE
+        // wheel-Ereignisse mehr an die Seite. Mausrad und Trackpad sind
+        // dadurch tot, solange man etwas zieht - genau der gemeldete
+        // Fehler. Das laesst sich nicht wegpatchen: es ist Teil des
+        // nativen Drag-Modus des Browsers. Deshalb laeuft das Ziehen hier
+        // ueber Pointer-Events.
+        //
+        // Damit gilt gleichzeitig und unabhaengig voneinander:
+        //
+        //   1. NORMALES SCROLLEN bleibt immer moeglich - auch mitten im
+        //      Ziehen. Wir fassen wheel/scroll an keiner Stelle an und
+        //      rufen nirgends preventDefault() auf einem Scroll-Ereignis.
+        //   2. AUTO-SCROLL am oberen/unteren Rand der Liste, solange
+        //      gezogen wird.
+        //   3. Beides stoert sich nicht: das Drop-Ziel wird in JEDEM
+        //      Frame neu unter dem Zeiger gesucht. Es ist egal, ob die
+        //      Liste gerade durch das Mausrad oder durch den Auto-Scroll
+        //      gewandert ist.
+        //
+        // Ein einfacher Klick loest nie ein Ziehen aus: erst ab 5 Pixeln
+        // Bewegung wird aus dem Druck ein Drag.
+        // =========================================================
+        const DRAG_THRESHOLD_PX = 5;      // ab hier ist es ein Ziehen
+        const AUTOSCROLL_ZONE_PX = 48;    // Randzone oben/unten
+        const AUTOSCROLL_MAX_PPS = 900;   // Pixel pro Sekunde am Rand
+
+        let libraryDrag = null;           // null = nichts gedrueckt/gezogen
+        let suppressLibraryClick = false; // nach einem Drag keinen Klick ausloesen
+
+        function getLibraryList() {
+            return document.getElementById("project-list");
+        }
+
+        // Liefert das Drop-Ziel fuer einen Punkt:
+        //   ""       = oberste Ebene
+        //   "f_..."  = dieser Ordner
+        //   null     = ausserhalb der Liste (kein gueltiges Ziel)
+        //
+        // HIER LAG DER GEMELDETE FEHLER.
+        // Vorher wurde das Ziel ueber document.elementFromPoint() und
+        // .closest("li") bestimmt. Zwischen zwei Zeilen liegen aber drei
+        // Pixel Abstand (die Liste ist ein Flex-Container mit gap: 3px),
+        // und rechts liegt die Scrollleiste. An diesen Stellen trifft der
+        // Punkt NICHT auf ein <li>, sondern auf das <ul> selbst.
+        // .closest("li") lieferte dann null - und null wurde als "oberste
+        // Ebene" gewertet. Beim kleinsten Wackeln der Maus innerhalb eines
+        // Ordners sprang das Ziel deshalb kurz auf "aus dem Ordner
+        // herausziehen", und der blaue Rahmen blitzte auf.
+        //
+        // Jetzt wird das Ziel GEOMETRISCH bestimmt: gesucht wird die
+        // Zeile, deren senkrechtes Band dem Zeiger am naechsten liegt.
+        // Luecken zwischen zwei Zeilen gehoeren damit automatisch zur
+        // benachbarten Zeile - es gibt keine "toten" Pixel mehr. Erst
+        // deutlich unterhalb der letzten Zeile ist die oberste Ebene
+        // gemeint.
+        const DROP_ROW_SLACK_PX = 24;
+
+        function libraryDropTargetAt(x, y) {
+            const list = getLibraryList();
+            if (!list) return null;
+
+            const listRect = list.getBoundingClientRect();
+            if (x < listRect.left || x > listRect.right ||
+                y < listRect.top || y > listRect.bottom) return null;
+
+            let nearest = null;
+            let nearestDistance = Infinity;
+            for (const li of list.children) {
+                if (li.style.display === "none") continue;
+                const r = li.getBoundingClientRect();
+                if (r.height === 0) continue;
+                const distance = y < r.top ? r.top - y : (y > r.bottom ? y - r.bottom : 0);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearest = li;
+                }
+                if (distance === 0) break;   // Zeiger steht genau auf dieser Zeile
+            }
+
+            // Freie Flaeche unterhalb der Liste: das ist die oberste Ebene.
+            if (!nearest || nearestDistance > DROP_ROW_SLACK_PX) return "";
+
+            if (nearest.classList.contains("lib-folder")) return nearest.dataset.folderId || "";
+            if (nearest.classList.contains("lib-empty")) return nearest.dataset.parent || "";
+            if (nearest.classList.contains("lib-project")) return nearest.dataset.parent || "";
+            return "";   // Zwischenueberschrift "Projekte", Hinweiszeile
+        }
+
+        // Schreibt nur dann am DOM, wenn sich das Ziel WIRKLICH geaendert
+        // hat. Vorher wurden die Klassen in jedem Bild neu gesetzt, also
+        // rund 60 Mal pro Sekunde entfernt und wieder angehaengt. Schon
+        // das allein liess den Rahmen sichtbar flackern.
+        let lastDropHighlight;
+
+        function highlightDropTarget(folderId) {
+            if (folderId === lastDropHighlight) return;
+            lastDropHighlight = folderId;
+            const list = getLibraryList();
+            if (!list) return;
+            list.querySelectorAll("li.drop-target").forEach(el => el.classList.remove("drop-target"));
+            list.classList.toggle("drop-root", folderId === "");
+            if (!folderId) return;
+            const row = [...list.querySelectorAll("li.lib-folder")].find(li => li.dataset.folderId === folderId);
+            if (row) row.classList.add("drop-target");
+        }
+
+        // Beschleunigungskurve: knapp in der Randzone langsam, direkt am
+        // Rand am schnellsten. Quadratisch, damit es sich natuerlich
+        // anfuehlt und nicht schlagartig losschiesst.
+        function autoScrollSpeed(overlap, zone) {
+            const t = Math.max(0, Math.min(1, overlap / zone));
+            return AUTOSCROLL_MAX_PPS * t * t;
+        }
+
+        function makeDragGhost(row) {
+            const ghost = document.createElement("div");
+            ghost.className = "lib-drag-ghost";
+            const icon = row.querySelector(".lib-icon");
+            const name = row.querySelector(".lib-name");
+            ghost.textContent = (icon ? icon.textContent + " " : "") + (name ? name.textContent : "");
+            document.body.appendChild(ghost);
+            return ghost;
+        }
+
+        function startLibraryDrag() {
+            const list = getLibraryList();
+            if (!libraryDrag || !list) return;
+            libraryDrag.active = true;
+            // Die Liste wurde seit dem letzten Ziehen vielleicht neu
+            // aufgebaut - die gemerkte Hervorhebung gilt dann nicht mehr.
+            lastDropHighlight = undefined;
+            libraryDrag.row.classList.add("dragging");
+            libraryDrag.ghost = makeDragGhost(libraryDrag.row);
+            document.body.classList.add("library-dragging");
+            document.addEventListener("keydown", onLibraryDragKey, true);
+            // Der Zeiger wird erst JETZT eingefangen. Vorher soll ein
+            // normaler Klick voellig unbehelligt durchgehen.
+            try { list.setPointerCapture(libraryDrag.pointerId); } catch (e) {}
+            libraryDrag.frame = requestAnimationFrame(libraryDragFrame);
+        }
+
+        function libraryDragFrame(ts) {
+            const list = getLibraryList();
+            if (!libraryDrag || !libraryDrag.active || !list) return;
+
+            const dt = libraryDrag.lastTs ? Math.min(64, ts - libraryDrag.lastTs) : 16;
+            libraryDrag.lastTs = ts;
+
+            const rect = list.getBoundingClientRect();
+
+            // 1) Auto-Scroll - und NUR dieser eine Container, nie die Seite.
+            const zone = Math.min(AUTOSCROLL_ZONE_PX, rect.height * 0.3);
+            const y = libraryDrag.y;
+            let delta = 0;
+            if (y < rect.top + zone) {
+                delta = -autoScrollSpeed(rect.top + zone - y, zone) * (dt / 1000);
+            } else if (y > rect.bottom - zone) {
+                delta = autoScrollSpeed(y - (rect.bottom - zone), zone) * (dt / 1000);
+            }
+            // Ganz aussen in der Randzone sind das nur Bruchteile eines
+            // Pixels pro Frame. Wuerde man die direkt zuweisen, gingen sie
+            // beim Runden verloren und das langsame Scrollen bliebe stehen.
+            // Deshalb wird der Rest aufgehoben und erst als ganzer Pixel
+            // angewendet.
+            libraryDrag.scrollRest += delta;
+            const wholePixels = Math.trunc(libraryDrag.scrollRest);
+            if (wholePixels) {
+                list.scrollTop += wholePixels;
+                libraryDrag.scrollRest -= wholePixels;
+            }
+
+            // 2) Das mitgezogene Etikett folgt dem Zeiger.
+            libraryDrag.ghost.style.transform =
+                "translate(" + (libraryDrag.x + 14) + "px," + (libraryDrag.y + 12) + "px)";
+
+            // 3) Ziel IMMER neu bestimmen. Dadurch stimmt es auch, wenn
+            //    der Nutzer zwischendurch mit dem Mausrad gescrollt hat.
+            updateLibraryDropTarget();
+
+            libraryDrag.frame = requestAnimationFrame(libraryDragFrame);
+        }
+
+        function updateLibraryDropTarget() {
+            if (!libraryDrag) return;
+            libraryDrag.targetId = libraryDropTargetAt(libraryDrag.x, libraryDrag.y);
+            highlightDropTarget(libraryDrag.targetId);
+        }
+
+        function onLibraryDragKey(e) {
+            if (e.key !== "Escape" || !libraryDrag || !libraryDrag.active) return;
+            // Abbruch per Escape darf nicht zusaetzlich Dialoge schliessen.
+            e.stopPropagation();
+            e.preventDefault();
+            endLibraryDrag(false);
+        }
+
+        // Beendet den Vorgang IMMER vollstaendig: Schleife aus, Etikett weg,
+        // Zeiger frei, Hervorhebungen weg, Listener ab. Wird von Drop,
+        // Abbruch, Escape und pointercancel gemeinsam benutzt.
+        function endLibraryDrag(commit) {
+            const current = libraryDrag;
+            if (!current) return;
+            libraryDrag = null;
+
+            if (current.frame) cancelAnimationFrame(current.frame);
+            if (current.ghost && current.ghost.parentNode) current.ghost.remove();
+            document.removeEventListener("keydown", onLibraryDragKey, true);
+            document.body.classList.remove("library-dragging");
+
+            const list = getLibraryList();
+            if (list) {
+                try {
+                    if (list.hasPointerCapture(current.pointerId)) list.releasePointerCapture(current.pointerId);
+                } catch (e) {}
+                list.querySelectorAll("li.dragging").forEach(el => el.classList.remove("dragging"));
+                highlightDropTarget(null);
+            }
+
+            if (current.active) {
+                // Nach einem echten Ziehen soll der folgende Klick das
+                // Projekt nicht zusaetzlich oeffnen. Die Sperre raeumt sich
+                // im naechsten Tick selbst wieder ab.
+                suppressLibraryClick = true;
+                setTimeout(() => { suppressLibraryClick = false; }, 0);
+            }
+
+            if (commit && current.active && current.targetId !== null) {
+                handleLibraryDrop(current.key, current.targetId);
             }
         }
 
-        function filterProjects() {
-            const text = document.getElementById("search-input").value.toLowerCase();
-            
-            document.querySelectorAll("#project-list li").forEach(li => {
-                const matchesText = li.innerText.toLowerCase().includes(text);
-                const matchesType = (selectedTypeFilter === "all") || (li.dataset.type === selectedTypeFilter);
-
-                if (matchesText && matchesType) {
-                    li.style.display = "flex";
-                } else {
-                    li.style.display = "none";
-                }
-            });
+        async function handleLibraryDrop(key, folderId) {
+            const moved = await moveProjectToFolder(key, folderId || null);
+            if (!moved) return;
+            if (folderId) {
+                openFolders.add(folderId);
+                persistOpenFolders();
+            }
+            await loadProjects();
+            const name = key.replace("codepen_", "");
+            showToast(folderId ? t("movedToFolder", name, folderNameById.get(folderId) || "")
+                               : t("movedToRoot", name), "success");
         }
 
+        function initLibraryDragAndDrop() {
+            const list = getLibraryList();
+            if (!list) return;
+
+            list.addEventListener("pointerdown", (e) => {
+                if (e.pointerType === "mouse" && e.button !== 0) return;
+                const row = e.target && e.target.closest ? e.target.closest("li.lib-project") : null;
+                if (!row) return;
+                if (e.target.closest(".lib-action")) return;   // Zeilen-Buttons
+                if (libraryDrag) endLibraryDrag(false);
+                // Bewusst KEIN preventDefault: der normale Klick zum
+                // Oeffnen eines Projekts muss unveraendert funktionieren.
+                libraryDrag = {
+                    pointerId: e.pointerId, key: row.dataset.key, row,
+                    startX: e.clientX, startY: e.clientY,
+                    x: e.clientX, y: e.clientY,
+                    active: false, ghost: null, targetId: null, frame: null,
+                    lastTs: 0, scrollRest: 0
+                };
+            });
+
+            list.addEventListener("pointermove", (e) => {
+                if (!libraryDrag || e.pointerId !== libraryDrag.pointerId) return;
+                libraryDrag.x = e.clientX;
+                libraryDrag.y = e.clientY;
+                if (libraryDrag.active) return;
+                if (Math.abs(e.clientX - libraryDrag.startX) < DRAG_THRESHOLD_PX &&
+                    Math.abs(e.clientY - libraryDrag.startY) < DRAG_THRESHOLD_PX) return;
+                startLibraryDrag();
+            });
+
+            list.addEventListener("pointerup", (e) => {
+                if (!libraryDrag || e.pointerId !== libraryDrag.pointerId) return;
+                endLibraryDrag(true);
+            });
+
+            // Abbruch durch das System (Touch-Scroll, Fensterwechsel, ...).
+            list.addEventListener("pointercancel", (e) => {
+                if (!libraryDrag || e.pointerId !== libraryDrag.pointerId) return;
+                endLibraryDrag(false);
+            });
+
+            // Sicherheitsnetz: verlaesst der Zeiger das Fenster ganz, wird
+            // ein noch nicht gestarteter Druck verworfen.
+            window.addEventListener("blur", () => { if (libraryDrag) endLibraryDrag(false); });
+        }
+
+        // =========================================================
+        // EXPORT (JSON)
+        //
+        // Das Format bleibt was es war - ein Objekt mit "codepen_<Name>"-
+        // Schluesseln. Neu dazu kommt EIN Metadatenblock:
+        //
+        //   {
+        //     "__codeforge__": { "version": 2, "folders": [ {id, name} ] },
+        //     "codepen_Game A": { ..., "folderId": "f_..." },
+        //     "codepen_Game D": { ... }          <- ohne Ordner
+        //   }
+        //
+        // "__codeforge__" beginnt bewusst NICHT mit "codepen_". Die
+        // Import-Schleife laeuft nur ueber "codepen_"-Schluessel und
+        // ueberspringt den Block dadurch automatisch. Eine aeltere Datei
+        // ohne diesen Block bleibt vollstaendig gueltig.
+        // =========================================================
         async function exportProjectsData(scope) {
             const keys = await dbGetAllKeys();
             if (keys.length === 0) {
@@ -3328,23 +5218,47 @@ builtins.input = __browser_terminal_input
                 return;
             }
 
-            let exportData = {};
+            const folders = await getFolders();
+            const exportData = {};
             let filename = "";
+            let projectKeys = [];
 
             if (scope === "single") {
                 if (!currentProjectKey) {
                     showToast(t("noProjectSelected"), "warning");
                     return;
                 }
-                const projectName = currentProjectKey.replace("codepen_", "");
-                exportData[currentProjectKey] = await dbGet(currentProjectKey);
-                filename = `project_${projectName}_${new Date().toISOString().slice(0, 10)}.json`;
+                projectKeys = [currentProjectKey];
+                filename = `project_${currentProjectKey.replace("codepen_", "")}_${new Date().toISOString().slice(0, 10)}.json`;
             } else {
-                for (const key of keys) {
-                    exportData[key] = await dbGet(key);
-                }
+                projectKeys = keys;
                 filename = `projects_backup_all_${new Date().toISOString().slice(0, 10)}.json`;
             }
+
+            const collected = [];
+            const usedFolderIds = new Set();
+            for (const key of projectKeys) {
+                const data = await dbGet(key);
+                if (!data) continue;
+                // Kopie mit geprueftem folderId - ein Verweis auf einen
+                // geloeschten Ordner wird beim Export zu "kein Ordner".
+                const folderId = resolveFolderId(data.folderId, folders);
+                collected.push([key, Object.assign({}, data, { folderId })]);
+                if (folderId) usedFolderIds.add(folderId);
+            }
+
+            // Beim Gesamt-Backup wandern ALLE Ordner mit, auch leere. Beim
+            // Export eines einzelnen Projekts nur dessen eigener Ordner.
+            const exportedFolders = (scope === "single")
+                ? folders.filter(f => usedFolderIds.has(f.id))
+                : folders.slice();
+
+            exportData.__codeforge__ = {
+                version: 2,
+                exported: new Date().toISOString(),
+                folders: exportedFolders
+            };
+            collected.forEach(([key, data]) => { exportData[key] = data; });
 
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -3355,27 +5269,101 @@ builtins.input = __browser_terminal_input
             downloadAnchor.remove();
         }
 
+        // =========================================================
+        // ORDNER AUS EINEM IMPORT ZUSAMMENFUEHREN
+        //
+        // Regeln - bewusst deterministisch, damit derselbe Import immer
+        // dasselbe Ergebnis liefert:
+        //
+        //   * Gleicher Name (ohne Gross-/Kleinschreibung, ohne Rand-
+        //     Leerzeichen) -> der VORHANDENE Ordner wird wiederverwendet.
+        //     Aus "RPG" + "rpg" wird also kein Duplikat.
+        //   * Sonst -> neuer Ordner mit FRISCHER lokaler ID. Fremde IDs
+        //     werden nie uebernommen; sie koennten sonst mit lokalen IDs
+        //     kollidieren und Projekte in den falschen Ordner legen.
+        //   * Rueckgabe: Zuordnung "fremde ID -> lokale ID" plus die
+        //     Anzahl wirklich neu angelegter Ordner.
+        // =========================================================
+        async function mergeImportedFolders(incoming) {
+            const map = new Map();
+            if (!incoming || !incoming.length) return { map, added: 0 };
+
+            const folders = (await getFolders()).slice();
+            const byName = new Map(folders.map(f => [f.name.trim().toLowerCase(), f]));
+            let added = 0;
+
+            for (const inc of incoming) {
+                const nameKey = inc.name.trim().toLowerCase();
+                const existing = byName.get(nameKey);
+                if (existing) {
+                    map.set(inc.id, existing.id);
+                    continue;
+                }
+                const created = { id: makeFolderId(), name: inc.name.trim() };
+                folders.push(created);
+                byName.set(nameKey, created);
+                map.set(inc.id, created.id);
+                added++;
+            }
+
+            if (added) await saveFolders(folders);
+            return { map, added };
+        }
+
+        // =========================================================
+        // IMPORT (JSON)
+        //
+        // Robust gegenueber alten Dateien (kein "__codeforge__", kein
+        // folderId -> alles landet auf der obersten Ebene) und gegenueber
+        // beschaedigten Eintraegen (werden gezaehlt und uebersprungen,
+        // statt den ganzen Import abzubrechen).
+        // =========================================================
         function importProjectsFromJsonFile(file) {
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const importedData = JSON.parse(e.target.result);
-                    let count = 0;
-
-                    for (const key of Object.keys(importedData)) {
-                        if (key.startsWith("codepen_")) {
-                            const baseName = key.replace("codepen_", "");
-                            await saveImportedProject(baseName, importedData[key]);
-                            count++;
-                        }
-                    }
-
-                    if (count === 0) {
+                    if (!importedData || typeof importedData !== "object" || Array.isArray(importedData)) {
                         showToast(t("importError"), "error");
                         return;
                     }
 
-                    showToast(t("importSuccess", count), "success");
+                    const meta = importedData.__codeforge__;
+                    const merge = await mergeImportedFolders(
+                        normalizeFolderList(meta && meta.folders));
+
+                    let count = 0;
+                    let skipped = 0;
+
+                    for (const key of Object.keys(importedData)) {
+                        // Nur echte Projektschluessel; "__codeforge__" und
+                        // alles Fremde wird hier automatisch uebersprungen.
+                        if (!key.startsWith("codepen_")) continue;
+
+                        const raw = importedData[key];
+                        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+                            skipped++;
+                            continue;
+                        }
+
+                        const data = Object.assign({}, raw);
+                        // Fremde Ordner-ID auf die lokale abbilden. Fehlt sie
+                        // oder zeigt sie ins Leere, kommt das Projekt auf die
+                        // oberste Ebene - nie in einen falschen Ordner.
+                        data.folderId = merge.map.get(data.folderId) || null;
+                        await saveImportedProject(key.replace("codepen_", ""), data);
+                        count++;
+                    }
+
+                    if (count === 0 && merge.added === 0) {
+                        showToast(t("importError"), "error");
+                        return;
+                    }
+
+                    showToast(merge.added ? t("importSuccessFolders", count, merge.added)
+                                          : t("importSuccess", count), "success");
+                    if (skipped) showToast(t("importSkipped", skipped), "warning");
+
                     await loadProjects();
 
                     const keys = await dbGetAllKeys();
@@ -3395,6 +5383,7 @@ builtins.input = __browser_terminal_input
            CODEFORGE FEATURES
            ========================================================= */
         let projectTypeForModal = "web";
+        let lastUsedFolderId = null;   // Vorauswahl im "Neues Projekt"-Dialog
         let currentMobileFile = "html";
         let recentProjects = JSON.parse(localStorage.getItem("codeforge_recent") || "[]");
 
@@ -3428,8 +5417,69 @@ builtins.input = __browser_terminal_input
             el.style.color = status === "saving" ? "#ffc107" : (status === "saved" ? "#8bc34a" : "#ff6b6b");
         }
 
+        // =========================================================
+        // STARTSEITE BEIM OEFFNEN
+        //
+        // Standard: an. Der Schalter auf der Startseite selbst stellt es
+        // ab. Ein Projekt wird trotzdem im Hintergrund geladen, damit
+        // hinter der Startseite nie eine leere Ansicht steht.
+        // =========================================================
+        // =========================================================
+        // PROJEKTE BEIM OEFFNEN UND WECHSELN AUTOMATISCH PAUSIEREN
+        //
+        // Standard: aus. Damit bleibt das bisherige Verhalten unveraendert.
+        // Ist die Einstellung an, wird die Vorschau beim Oeffnen eines
+        // Projekts direkt PAUSIERT AUFGEBAUT - sie laeuft also nicht kurz
+        // an. Das Fortsetzen benutzt dieselbe Pause-/Weiter-Mechanik wie
+        // der Knopf: das Dokument wird nicht neu geladen, es laeuft genau
+        // dort weiter, wo es angehalten wurde.
+        // =========================================================
+        const pauseOnOpenKey = "codeforge_pause_on_open";
+
+        function shouldAutoPauseOnOpen() {
+            try {
+                return localStorage.getItem(pauseOnOpenKey) === "1";
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setPauseOnOpen(enabled) {
+            try { localStorage.setItem(pauseOnOpenKey, enabled ? "1" : "0"); } catch (e) {}
+            showToast(enabled ? t("pauseOnOpenOn") : t("pauseOnOpenOff"), "success");
+        }
+
+        function syncPauseOnOpenToggle() {
+            const box = document.getElementById("pause-on-open");
+            if (box) box.checked = shouldAutoPauseOnOpen();
+        }
+
+        const homeOnStartKey = "codeforge_home_on_start";
+
+        function shouldShowHomeOnStart() {
+            try {
+                return localStorage.getItem(homeOnStartKey) !== "0";
+            } catch (e) {
+                return true;
+            }
+        }
+
+        function setHomeOnStart(enabled) {
+            try { localStorage.setItem(homeOnStartKey, enabled ? "1" : "0"); } catch (e) {}
+            showToast(enabled ? t("homeOnStartOn") : t("homeOnStartOff"), "success");
+        }
+
+        function syncHomeOnStartToggle() {
+            const box = document.getElementById("home-on-start");
+            if (box) box.checked = shouldShowHomeOnStart();
+        }
+
         function showHome() {
             renderRecentProjects();
+            renderHomeStats();
+            updateTrashBadge();
+            syncHomeOnStartToggle();
+            syncPauseOnOpenToggle();
             document.getElementById("home-screen").classList.add("active");
         }
 
@@ -3477,8 +5527,37 @@ builtins.input = __browser_terminal_input
         function openProjectModal(type = "web") {
             projectTypeForModal = type;
             chooseProjectType(type);
+            // Zuletzt benutzter Ordner ist die naheliegendste Vorauswahl.
+            populateFolderSelect(lastUsedFolderId);
             document.getElementById("project-modal").classList.add("open");
             setTimeout(() => document.getElementById("new-project-name").focus(), 50);
+        }
+
+
+        // Fuellt die Ordner-Auswahl im "Neues Projekt"-Dialog. Gibt es noch
+        // keinen Ordner, wird die ganze Zeile ausgeblendet - kein leeres
+        // Bedienelement ohne Nutzen.
+        async function populateFolderSelect(selectedId) {
+            const select = document.getElementById("new-project-folder");
+            const row = document.getElementById("new-project-folder-row");
+            if (!select) return;
+
+            const folders = (await getFolders()).slice()
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+            if (row) row.style.display = folders.length ? "" : "none";
+
+            select.innerHTML = "";
+            const rootOption = document.createElement("option");
+            rootOption.value = "";
+            rootOption.textContent = t("noFolderOption");
+            select.appendChild(rootOption);
+            folders.forEach(f => {
+                const option = document.createElement("option");
+                option.value = f.id;
+                option.textContent = f.name;
+                select.appendChild(option);
+            });
+            select.value = selectedId || "";
         }
 
         function closeProjectModal() {
@@ -3509,7 +5588,9 @@ builtins.input = __browser_terminal_input
             const key = "codepen_" + name;
             if (await dbGet(key)) return showToast(t("nameExists2"), "warning");
             const template = document.getElementById("project-template").value;
-            let data = { type: projectTypeForModal, html:"", css:"", js:"", py:"" };
+            const folderSelect = document.getElementById("new-project-folder");
+            let data = { type: projectTypeForModal, folderId: folderSelect ? (folderSelect.value || null) : null,
+                         html:"", css:"", js:"", py:"" };
 
             if (projectTypeForModal === "python") {
                 if (template !== "blank") data.py = 'name = input("Wie heißt du? ")\nprint(f"Hallo {name}!")';
@@ -3530,6 +5611,12 @@ builtins.input = __browser_terminal_input
                 }
             }
             await dbSet(key, data);
+            data.folderId = resolveFolderId(data.folderId, await getFolders());
+            lastUsedFolderId = data.folderId;
+            if (data.folderId) {
+                openFolders.add(data.folderId);
+                persistOpenFolders();
+            }
             closeProjectModal();
             await loadProjects();
             await openProject(key);
@@ -3625,16 +5712,56 @@ builtins.input = __browser_terminal_input
 
         // Alle Projekte als EINE ZIP-Datei, jedes Projekt in einem eigenen
         // Unterordner (Ordnername = Projektname).
+        // Ordner- und Projektnamen werden in der ZIP zu Pfaden. Zeichen,
+        // die in Dateinamen nicht erlaubt sind, werden ersetzt - sonst
+        // entstehen beim Entpacken kaputte oder verschachtelte Pfade.
+        function safeZipName(name) {
+            const cleaned = String(name)
+                .replace(/[\\/:*?"<>|]/g, "-")
+                .replace(/^\.+/, "_")
+                .trim();
+            return cleaned || "Projekt";
+        }
+
+        // Alle Projekte als EINE ZIP-Datei. Die Ordnerstruktur wird dabei
+        // 1:1 zur Verzeichnisstruktur:
+        //
+        //   RPG/Game A/index.html
+        //   RPG/Game B/index.html
+        //   Horror/Game C/index.html
+        //   Game D/index.html            <- Projekt ohne Ordner
+        //
+        // Fuer JEDEN Ordner wird ausserdem ein Verzeichniseintrag angelegt.
+        // Dadurch ueberleben auch LEERE Ordner den Weg durch die ZIP-Datei,
+        // ganz ohne zusaetzliche Manifest-Datei.
         async function exportAllProjectsAsZip() {
             if (!window.JSZip) return showToast(t("zipModuleError"), "error");
             const keys = await dbGetAllKeys();
             if (keys.length === 0) return showToast(t("noProjectsToExport"), "warning");
 
+            const folders = await getFolders();
             const zip = new JSZip();
+
+            const folderPath = new Map();
+            const usedPaths = new Set();
+            for (const f of folders) {
+                const base = safeZipName(f.name);
+                let path = base;
+                let n = 2;
+                // Zwei verschiedene Namen koennen nach dem Saeubern gleich
+                // aussehen ("A/B" und "A-B") - dann wird durchnummeriert.
+                while (usedPaths.has(path.toLowerCase())) path = base + " (" + (n++) + ")";
+                usedPaths.add(path.toLowerCase());
+                folderPath.set(f.id, path);
+                zip.folder(path);
+            }
+
             for (const key of keys) {
                 const data = await dbGet(key);
                 if (!data) continue;
-                const folder = zip.folder(key.replace("codepen_", ""));
+                const projectName = safeZipName(key.replace("codepen_", ""));
+                const parent = folderPath.get(resolveFolderId(data.folderId, folders));
+                const folder = zip.folder(parent ? parent + "/" + projectName : projectName);
                 if (data.type === "python") {
                     folder.file("main.py", data.py || "");
                 } else {
@@ -3643,6 +5770,7 @@ builtins.input = __browser_terminal_input
                     folder.file("script.js", data.js || "");
                 }
             }
+
             const blob = await zip.generateAsync({type:"blob"});
             const a = document.createElement("a");
             a.href = URL.createObjectURL(blob);
@@ -3672,22 +5800,42 @@ builtins.input = __browser_terminal_input
         // - Ein Backup mehrerer Projekte (siehe exportAllProjectsAsZip):
         //   jeder Unterordner in der ZIP wird als eigenes Projekt importiert,
         //   der Ordnername wird zum Projektnamen.
+        // ZIP-Import. Erkennt drei Faelle allein an der Verzeichnis-
+        // struktur - ohne Manifest, damit auch eine von Hand gebaute ZIP
+        // funktioniert:
+        //
+        //   1. Projektdateien direkt im Wurzelverzeichnis
+        //      -> EIN Projekt, Name kommt vom ZIP-Dateinamen. (wie bisher)
+        //   2. Verzeichnis mit Projektdateien direkt darin
+        //      -> ein Projekt ohne Ordner. (altes Backup-Format)
+        //   3. Verzeichnis, dessen UNTERverzeichnisse Projektdateien
+        //      enthalten -> ein ORDNER mit diesen Projekten. (neues Format)
+        //
+        // Leere Verzeichnisse werden nur dann als leere Ordner uebernommen,
+        // wenn die Datei ueberhaupt im neuen Format vorliegt. Sonst bliebe
+        // ein altes Backup mit einem leeren Projektverzeichnis nicht
+        // rueckwaertskompatibel.
         async function importFromZip(file) {
             if (!window.JSZip) return showToast(t("zipModuleError"), "error");
 
             try {
                 const zip = await JSZip.loadAsync(file);
 
-                const topLevelDirs = new Set();
+                const projectFileNames = ["index.html", "style.css", "script.js", "main.py"];
+                const dirs = new Set();          // alle Verzeichnisse
+                const projectDirs = new Set();   // Verzeichnisse MIT Projektdateien
                 let hasRootFiles = false;
+
                 zip.forEach((relPath, entry) => {
-                    if (entry.dir) return;
-                    const parts = relPath.split("/");
-                    if (parts.length > 1) {
-                        topLevelDirs.add(parts[0]);
-                    } else {
-                        hasRootFiles = true;
-                    }
+                    const clean = String(relPath).replace(/\/+$/, "");
+                    if (!clean) return;
+                    if (entry.dir) { dirs.add(clean); return; }
+                    const parts = clean.split("/");
+                    const fileName = parts.pop();
+                    if (parts.length) dirs.add(parts.join("/"));
+                    if (projectFileNames.indexOf(fileName) === -1) return;
+                    if (parts.length) projectDirs.add(parts.join("/"));
+                    else hasRootFiles = true;
                 });
 
                 const readFile = async (path) => {
@@ -3711,14 +5859,39 @@ builtins.input = __browser_terminal_input
                     return null;
                 };
 
+                // Verzeichnisse der obersten Ebene, die Projekte ENTHALTEN,
+                // sind Ordner.
+                const folderNames = new Set();
+                projectDirs.forEach(p => {
+                    const parts = p.split("/");
+                    if (parts.length > 1) folderNames.add(parts[0]);
+                });
+                const newFormat = folderNames.size > 0;
+
+                if (newFormat) {
+                    const topLevel = new Set();
+                    dirs.forEach(p => topLevel.add(p.split("/")[0]));
+                    projectDirs.forEach(p => topLevel.add(p.split("/")[0]));
+                    topLevel.forEach(name => {
+                        const isProject = projectDirs.has(name);
+                        const hasChildren = [...projectDirs].some(p => p.indexOf(name + "/") === 0);
+                        if (!isProject && !hasChildren) folderNames.add(name);   // leerer Ordner
+                    });
+                }
+
+                const merge = await mergeImportedFolders(
+                    [...folderNames].map(name => ({ id: "zip:" + name, name })));
+
                 let importedCount = 0;
 
-                for (const dir of topLevelDirs) {
+                for (const dir of projectDirs) {
                     const data = await buildProjectData(dir);
-                    if (data) {
-                        await saveImportedProject(dir, data);
-                        importedCount++;
-                    }
+                    if (!data) continue;
+                    const parts = dir.split("/");
+                    const projectName = parts[parts.length - 1];
+                    if (parts.length > 1) data.folderId = merge.map.get("zip:" + parts[0]) || null;
+                    await saveImportedProject(projectName, data);
+                    importedCount++;
                 }
 
                 if (hasRootFiles) {
@@ -3730,12 +5903,13 @@ builtins.input = __browser_terminal_input
                     }
                 }
 
-                if (importedCount === 0) {
+                if (importedCount === 0 && merge.added === 0) {
                     showToast(t("importError"), "error");
                     return;
                 }
 
-                showToast(t("importSuccess", importedCount), "success");
+                showToast(merge.added ? t("importSuccessFolders", importedCount, merge.added)
+                                      : t("importSuccess", importedCount), "success");
                 await loadProjects();
                 const keys = await dbGetAllKeys();
                 if (keys.length > 0) await openProject(keys[0]);
@@ -3871,16 +6045,30 @@ builtins.input = __browser_terminal_input
             triggerAutoSave();
         }
 
+        // =========================================================
+        // BEFEHLSPALETTE (Strg/Cmd + K)
+        //
+        // Bewertung: BEHALTEN und ausbauen. Sie kostet fast nichts, ist
+        // der einzige Weg ohne Maus und wird bei vielen Projekten zum
+        // schnellsten Weg ueberhaupt. Neu sind die Aktionen, die es
+        // vorher nur als Button gab (Umbenennen, Loeschen, Ordner,
+        // Import/Export, Papierkorb) - und vor allem das direkte OEFFNEN
+        // eines Projekts ueber seinen Namen.
+        // =========================================================
         function getCommands() {
             return [
                 [t("cmdNewWeb"), () => openProjectModal("web")],
                 [t("cmdNewPy"), () => openProjectModal("python")],
+                [t("cmdNewFolder"), () => createFolderFromDialog()],
                 [t("cmdSave"), () => saveCurrentProject()],
+                [t("cmdRename"), () => renameCurrentProject()],
+                [t("cmdDeleteProject"), () => deleteCurrentProject()],
                 [t("cmdFormat"), () => formatCurrentCode()],
                 [t("cmdSearch"), () => openSearchModal()],
                 [t("cmdTheme"), () => toggleTheme()],
                 [t("cmdFullscreen"), () => toggleEditorFullscreen()],
                 [t("cmdZip"), () => exportCurrentAsZip()],
+                [t("cmdTrash"), () => openTrashModal()],
                 [t("cmdHome"), () => showHome()],
             ];
         }
@@ -3900,14 +6088,52 @@ builtins.input = __browser_terminal_input
 
         function renderCommands(filter) {
             const list = document.getElementById("command-list");
+            if (!list) return;
+            const query = String(filter || "").trim().toLowerCase();
             list.innerHTML = "";
-            getCommands().filter(([name]) => name.toLowerCase().includes(filter.toLowerCase())).forEach(([name, fn]) => {
+
+            const addEntry = (label, hint, run) => {
                 const item = document.createElement("div");
                 item.className = "command-item";
-                item.textContent = name;
-                item.onclick = () => { document.getElementById("command-palette").classList.remove("open"); fn(); };
+                const text = document.createElement("span");
+                text.textContent = label;
+                item.appendChild(text);
+                if (hint) {
+                    const badge = document.createElement("span");
+                    badge.className = "command-hint";
+                    badge.textContent = hint;
+                    item.appendChild(badge);
+                }
+                item.onclick = () => { closeCommandPalette(); run(); };
                 list.appendChild(item);
+            };
+
+            let count = 0;
+            getCommands().forEach(([name, fn]) => {
+                if (query && !name.toLowerCase().includes(query)) return;
+                addEntry(name, null, fn);
+                count++;
             });
+
+            // Projekte direkt oeffnen. Die Namen kommen aus der bereits
+            // aufgebauten Bibliothek - keine zweite Datenquelle.
+            document.querySelectorAll("#project-list li.lib-project").forEach(li => {
+                const name = li.dataset.name || "";
+                if (query && !name.toLowerCase().includes(query)) return;
+                const key = li.dataset.key;
+                const parent = li.dataset.parent || "";
+                addEntry(t("cmdOpenProject", name),
+                         parent ? (folderNameById.get(parent) || "") : "",
+                         () => openProject(key));
+                count++;
+            });
+
+            if (!count) {
+                const note = document.createElement("div");
+                note.className = "command-note";
+                note.textContent = t("noSearchResults");
+                list.appendChild(note);
+            }
         }
 
         function initProKeyboardShortcuts() {
@@ -3952,8 +6178,57 @@ builtins.input = __browser_terminal_input
         /* =========================================================
            FINAL UX FIXES
            ========================================================= */
-        let previousView = "editor";
         let textDialogResolver = null;
+
+        // =========================================================
+        // ZURUECK-PFEIL
+        //
+        // Der Pfeil oben links wechselt zwischen Startseite und Projekt.
+        // In einem Dialog- oder Aktionszustand (Umbenennen, Loeschen,
+        // Neues Projekt, Import/Export, Suche, Papierkorb, Befehlspalette)
+        // ist er widerspruechlich: "zurueck" heisst dort "Dialog
+        // schliessen", und dafuer gibt es Escape und die Buttons im
+        // Dialog selbst.
+        //
+        // Wichtig: es wird KEIN zweiter Zustand mitgefuehrt. Der Pfeil
+        // liest direkt aus dem DOM ab, ob gerade ein Overlay offen ist;
+        // ein MutationObserver stoesst die Aktualisierung an. Dadurch
+        // koennen Pfeil und echte Ansicht nicht auseinanderlaufen - egal
+        // ueber welchen Weg ein Dialog geoeffnet oder geschlossen wurde.
+        // =========================================================
+        const overlayIds = ["project-modal", "search-modal", "import-export-modal",
+                            "command-palette", "trash-modal", "confirm-dialog", "text-dialog"];
+
+        function anyOverlayOpen() {
+            return overlayIds.some(id => {
+                const el = document.getElementById(id);
+                return el && el.classList.contains("open");
+            });
+        }
+
+        function updateBackButtonVisibility() {
+            const btn = document.getElementById("browser-back-btn");
+            if (!btn) return;
+            btn.style.display = anyOverlayOpen() ? "none" : "";
+        }
+
+        function initOverlayStateWatcher() {
+            const observer = new MutationObserver(updateBackButtonVisibility);
+            overlayIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+            });
+            updateBackButtonVisibility();
+        }
+
+        // Kennzahlen auf der Startseite.
+        async function renderHomeStats() {
+            const box = document.getElementById("home-stats");
+            if (!box) return;
+            const folders = await getFolders();
+            const keys = await dbGetAllKeys();
+            box.textContent = t("homeStats", keys.length, folders.length);
+        }
 
         function goBackToPreviousView() {
             // Startseite -> vorheriges Projekt; Projekt -> Startseite.
@@ -4073,6 +6348,8 @@ builtins.input = __browser_terminal_input
             applyStoredTheme();
             initProKeyboardShortcuts();
             initCodeMirror();
+            initLibraryDragAndDrop();
+            initButtonFocusReset();
             initPyodide();
             updateDividersAndFlex();
             await loadProjects();
@@ -4084,7 +6361,15 @@ builtins.input = __browser_terminal_input
                 await createDefaultProject();
             }
             renderRecentProjects();
-            hideHome();
+            updateTrashBadge();
+            initOverlayStateWatcher();
+
+            // Startseite beim Oeffnen - ueber den Schalter dort abstellbar.
+            if (shouldShowHomeOnStart()) {
+                showHome();
+            } else {
+                hideHome();
+            }
             mobileSelectFile("html");
         });
     </script>
