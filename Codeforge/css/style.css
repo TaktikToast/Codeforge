@@ -1,0 +1,1690 @@
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-ui); }
+        html { --font-display: 'Space Grotesk', 'Inter', sans-serif; --font-ui: 'Inter', -apple-system, sans-serif; --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; }
+        body { display: flex; height: 100vh; background-color: var(--bg-canvas); color: var(--text); overflow: hidden; user-select: none; font-family: var(--font-ui); }
+
+        /* Sidebar */
+        #sidebar { width: 228px; background: var(--bg-surface); padding: 16px 14px; display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--border); transition: margin-left 0.25s ease; flex-shrink: 0; }
+        #sidebar.collapsed { margin-left: -228px; }
+        #sidebar input, #sidebar button { width: 100%; padding: 9px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-surface-2); color: var(--text); font-size: 13px; }
+        #sidebar button { background: var(--bg-surface-2); cursor: pointer; border: 1px solid var(--border-strong); font-weight: 600; transition: background .12s ease, border-color .12s ease; }
+
+        /* Filter-Buttons Style */
+        .type-filter-bar { display: flex; gap: 4px; }
+        .filter-btn {
+            flex: 1;
+            padding: 6px !important;
+            font-size: 11px;
+            border-radius: var(--radius-sm) !important;
+            background: var(--toggle-inactive-bg) !important;
+            border: 1px solid var(--toggle-inactive-border) !important;
+            color: var(--toggle-inactive-text) !important;
+            font-weight: 500 !important;
+        }
+        .filter-btn:hover { background: var(--toggle-inactive-hover-bg) !important; color: var(--toggle-inactive-hover-text) !important; }
+        .filter-btn.active {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+            font-weight: 600 !important;
+        }
+
+        #project-list { list-style: none; flex-grow: 1; overflow-y: auto; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+        #project-list li { padding: 9px 10px; background: transparent; cursor: pointer; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 13px; border: 1px solid transparent; transition: background .12s ease, border-color .12s ease; }
+        #project-list li:hover { background: var(--bg-surface-2); }
+        #project-list li.active { border-color: var(--ember); background: var(--bg-surface-2); color: var(--text); }
+
+        /* =========================================================
+           BIBLIOTHEK: Ordner + Projekte in der Seitenleiste
+           Baut auf den vorhandenen #project-list li-Stilen auf und
+           ergaenzt nur das, was die zweite Ebene braucht.
+           ========================================================= */
+        .new-bar { display: flex; gap: 6px; }
+        .new-bar button { width: auto !important; flex: 1; text-align: center; }
+
+        #project-list li.lib-item { justify-content: flex-start; gap: 8px; }
+        .lib-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
+        .lib-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lib-count { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+        .lib-hint { font-size: 11px; color: var(--text-muted); flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lib-chevron { width: 9px; font-size: 9px; color: var(--text-muted); flex-shrink: 0; transition: transform .15s ease; }
+        #project-list li.lib-folder.open .lib-chevron { transform: rotate(90deg); }
+        #project-list li.lib-project.in-folder { padding-left: 28px; }
+
+        /* Umbenennen/Loeschen erscheinen erst beim Hovern - ruhige Liste.
+           Sie liegen ABSOLUT ueber der Zeile: so kosten sie den Ordnernamen
+           keine Breite und die Zeile springt beim Hovern nicht um. */
+        #project-list li.lib-item { position: relative; }
+        .lib-actions {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            display: flex; gap: 2px; opacity: 0; pointer-events: none;
+            transition: opacity .12s ease;
+            background: var(--bg-surface-2); border-radius: 5px; padding: 1px;
+        }
+        #project-list li.lib-item:hover .lib-actions,
+        #project-list li.lib-item:focus-within .lib-actions { pointer-events: auto; }
+        #project-list li.lib-item:hover .lib-actions,
+        #project-list li.lib-item:focus-within .lib-actions { opacity: 1; }
+        /* Waehrend eines Ziehens keine Hover-Buttons einblenden. */
+        body.library-dragging .lib-actions { opacity: 0 !important; pointer-events: none !important; }
+        .lib-action {
+            width: 20px !important; height: 20px; padding: 0 !important;
+            border: none !important; background: transparent !important;
+            color: var(--text-muted); font-size: 11px; line-height: 1;
+            border-radius: 4px !important; cursor: pointer;
+        }
+        .lib-action:hover { background: var(--bg-surface-2) !important; color: var(--text); }
+        #project-list li.lib-folder:hover .lib-count { display: none; }
+
+        /* Ueberschriften und Hinweiszeilen sind keine Bedienelemente. */
+        #project-list li.lib-root-header,
+        #project-list li.lib-note {
+            cursor: default; font-size: 10px; font-weight: 600; letter-spacing: .07em;
+            text-transform: uppercase; color: var(--text-muted);
+            padding: 12px 10px 4px; border: 0;
+        }
+        #project-list li.lib-empty {
+            cursor: default; font-size: 11px; color: var(--text-muted);
+            padding: 5px 10px 5px 28px; border: 0; font-style: italic;
+        }
+        #project-list li.lib-root-header:hover,
+        #project-list li.lib-note:hover,
+        #project-list li.lib-empty:hover { background: transparent; }
+
+        /* Drag & Drop: klares, aber dezentes Feedback. */
+        #project-list li.dragging { opacity: .4; }
+
+        /* Beim Ziehen laeuft ein kleines Etikett mit dem Zeiger mit.
+           pointer-events:none ist wichtig - sonst wuerde es sich selbst
+           unter dem Zeiger finden und das Drop-Ziel verdecken. */
+        .lib-drag-ghost {
+            position: fixed; top: 0; left: 0; z-index: 9999;
+            pointer-events: none; will-change: transform;
+            display: flex; align-items: center; gap: 6px;
+            max-width: 220px; padding: 6px 11px;
+            border: 1px solid var(--ember); border-radius: var(--radius-sm);
+            background: var(--bg-surface-2); color: var(--text);
+            font-family: var(--font-ui); font-size: 13px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+            box-shadow: 0 10px 28px rgba(0,0,0,.38);
+        }
+        body.light-theme .lib-drag-ghost {
+            background: #fff; color: #18151e;
+            box-shadow: 0 10px 28px rgba(16,14,20,.18);
+        }
+        body.library-dragging, body.library-dragging #project-list li { cursor: grabbing; }
+
+        /* Beruehrung darf weiterhin senkrecht scrollen. Das Ziehen laeuft
+           ueber Maus/Trackpad, dafuer braucht es kein touch-action:none -
+           das wuerde nur das Scrollen per Finger kaputt machen. */
+        #project-list li.lib-project { touch-action: pan-y; }
+
+        /* Der Scroll-Container selbst: sanftes, normales Scrollen.
+           Bewusst KEIN overflow:hidden waehrend eines Drags. */
+        #project-list { overscroll-behavior: contain; }
+        #project-list li.lib-folder.drop-target {
+            border-color: var(--ember);
+            background: var(--ember-glow);
+            color: var(--text);
+        }
+        /* Ziel "oberste Ebene": ein Rahmen um die Liste statt einer
+           vollflaechigen Einfaerbung - deutlich, aber nicht laut. */
+        #project-list.drop-root { box-shadow: inset 0 0 0 2px var(--ember-glow); border-radius: var(--radius-sm); }
+        #project-list.drop-root li.lib-root-header { color: var(--ember); }
+
+
+        /* Main Area */
+        #main { flex-grow: 1; display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; }
+        .top-bar { display: flex; background: var(--bg-surface); align-items: center; justify-content: space-between; height: 44px; border-bottom: 1px solid var(--border); flex-shrink: 0; padding-right: 12px; }
+        .tabs { display: flex; align-items: center; }
+        .tab-btn, .icon-btn { padding: 10px 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; font-family: var(--font-ui); }
+        .tab-btn {
+            background: var(--toggle-inactive-bg);
+            color: var(--toggle-inactive-text);
+            border: 1px solid transparent;
+            margin: 4px 2px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+        }
+        .tab-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
+        .tab-btn.active {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+        }
+        .icon-btn { border-radius: var(--radius-sm); }
+        .icon-btn:hover { background: var(--bg-surface-2); color: var(--text); }
+
+        /* Format & Action Buttons */
+        .action-container { display: flex; gap: 6px; align-items: center; }
+        .action-btn { background: var(--bg-surface-2); color: var(--text); border: 1px solid var(--border-strong); padding: 6px 11px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-weight: 600; font-family: var(--font-ui); transition: border-color .12s ease, background .12s ease; display: inline-flex; align-items: center; gap: 6px; }
+        .action-btn:hover { border-color: var(--ember); }
+
+        /* Tab Content Control */
+        .tab-content { display: none; width: 100%; height: calc(100vh - 44px); }
+        .tab-content.active { display: flex; }
+
+        /* WEB TAB LAYOUT */
+        #web-tab { width: 100%; height: 100%; position: relative; }
+
+        .editors-column { width: 50%; display: flex; flex-direction: column; background: var(--bg-canvas); min-width: 150px; height: 100%; }
+        
+        .restore-bar { display: flex; gap: 5px; background: var(--bg-surface); padding: 6px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .restore-btn {
+            background: var(--toggle-inactive-bg);
+            border: 1px solid var(--toggle-inactive-border);
+            color: var(--toggle-inactive-text);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 9px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .restore-btn:hover { background: var(--toggle-inactive-hover-bg); color: var(--toggle-inactive-hover-text); }
+        .restore-btn.active-tab {
+            background: var(--toggle-active-bg) !important;
+            color: var(--toggle-active-text) !important;
+            border-color: var(--toggle-active-border) !important;
+        }
+        .restore-btn.active-tab:hover { filter: brightness(1.1); }
+
+        .editor-box { display: flex; flex-direction: column; flex: 1; min-height: 32px; overflow: hidden; }
+        .editor-box.collapsed { display: none !important; }
+        
+        .editor-header { height: 34px; background: var(--bg-surface); display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font-size: 12px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; border-bottom: 1px solid var(--border); font-family: var(--font-mono); }
+        .editor-header-left { display: flex; align-items: center; gap: 8px; }
+        .toggle-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 4px; border-radius: var(--radius-sm); }
+        .toggle-btn:hover { color: var(--text); }
+
+        .row-divider { height: 6px; background: var(--bg-surface); cursor: row-resize; transition: background 0.15s; z-index: 5; touch-action: none; flex-shrink: 0; display: none; }
+        .row-divider:hover, .row-divider.dragging { background: var(--ember); }
+
+        .col-divider { width: 8px; background: var(--bg-surface); cursor: col-resize; transition: background 0.15s; z-index: 10; touch-action: none; flex-shrink: 0; }
+        .col-divider:hover, .col-divider.dragging { background: var(--ember); }
+
+        .editor-container { flex-grow: 1; display: flex; background: var(--bg-inset); overflow: hidden; position: relative; }
+        .CodeMirror { width: 100%; height: 100%; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--bg-inset) !important; color: #e7e2f0 !important; }
+        .CodeMirror-gutters { background: var(--bg-inset) !important; border-right: 1px solid var(--border) !important; }
+        .CodeMirror-linenumber { color: #5c5568 !important; }
+        .CodeMirror-cursor { border-left: 2px solid var(--ember) !important; }
+        .CodeMirror-selected { background: var(--ember-glow) !important; }
+
+        /* Preview Area & JS Console */
+        .preview-container { flex-grow: 1; display: flex; flex-direction: column; background: #fff; min-width: 150px; position: relative; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; height: 36px; padding: 0 12px; background: var(--bg-surface); font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); flex-shrink: 0; font-weight: 600; }
+        #preview-frame { width: 100%; flex-grow: 1; background: white; border: none; }
+        .drag-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 99; }
+        .dragging-active .drag-overlay { display: block; }
+
+        /* Web Console UI */
+        .js-console-container { height: 140px; background: var(--bg-inset); border-top: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .js-console-container.collapsed { display: none !important; }
+        .js-console-header { height: 30px; background: var(--bg-surface); padding: 0 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        #js-console-output { flex-grow: 1; padding: 10px 12px; font-family: var(--font-mono); font-size: 12px; overflow-y: auto; white-space: pre-wrap; color: #cfc9da; }
+
+        /* PYTHON TAB */
+        #python-tab { width: 100%; height: 100%; padding: 16px; flex-direction: column; gap: 12px; background: var(--bg-canvas); }
+        
+        .py-toolbar { display: flex; justify-content: space-between; align-items: center; height: 34px; flex-shrink: 0; }
+        .py-title { font-size: 13px; font-weight: 700; color: var(--ember); font-family: var(--font-mono); }
+        #run-py-btn { padding: 7px 18px; background: var(--ember); color: #ffffff; border: 1px solid var(--ember); font-weight: 700; cursor: pointer; border-radius: var(--radius-sm); font-size: 13px; transition: background .12s ease; }
+        #run-py-btn:hover { background: var(--ember-dim); color: #fff; }
+
+        .py-editor-wrapper { flex: 1; display: flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-inset); position: relative; }
+        
+        .py-console-title { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 5px; flex-shrink: 0; letter-spacing: .03em; }
+
+        /* Python Terminal mit direkter Eingabe im Output-Bereich */
+        .python-terminal {
+            /* Feste Terminal-Höhe: die Box bleibt bei wenig und viel Output
+               immer gleich groß; langer Output scrollt innerhalb der Box. */
+            height: 220px;
+            min-height: 220px;
+            max-height: 220px;
+            box-sizing: border-box;
+            background: var(--bg-inset);
+            color: var(--text);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--input-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: text;
+        }
+
+        #python-output {
+            flex: 1;
+            min-height: 0;
+            background: var(--bg-inset);
+            color: var(--text);
+            padding: 12px 14px 0 14px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            user-select: text;
+        }
+
+        #python-input-row {
+            display: flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 14px 10px 14px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        #python-input-row.hidden {
+            display: none;
+        }
+
+        #python-input-prompt {
+            color: var(--ember);
+            white-space: pre;
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        #python-input {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            color: var(--text);
+            border: none !important;
+            outline: none;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            caret-color: var(--ember);
+            padding: 0;
+        }
+
+        #python-input:disabled {
+            cursor: default;
+        }
+
+        /* Copy-Buttons */
+        .editor-header-right { display: flex; align-items: center; gap: 4px; }
+        .copy-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 3px 7px; border-radius: var(--radius-sm); transition: background 0.15s, color 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; flex-shrink: 0; min-width: max-content; }
+        .copy-btn:hover { color: var(--text); background: var(--bg-surface-2); }
+        .copy-btn.copied { color: var(--success); }
+
+        /* Web-Preview "Code Ausführen" Button */
+        #reset-web-btn, #reset-py-btn { background: transparent; color: #f0555a; border: 1px solid #f0555a; padding: 6px 11px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; font-weight: 700; transition: background .12s ease, color .12s ease; }
+        #reset-web-btn:hover, #reset-py-btn:hover { background: #f0555a; color: #1a0708; }
+        .preview-header-right { display: flex; align-items: center; gap: 6px; }
+        .preview-pause-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:26px; padding:0; }
+        .preview-pause-btn.active { color: var(--ember) !important; background: var(--bg-surface-2); }
+        .preview-pause-btn:not(.active) { color: var(--ember) !important; }
+        .preview-pause-btn:hover, .preview-pause-btn.active:hover { color: var(--ember) !important; }
+        /* Im Light-Mode bekommt der pausierte Pause/Play-Button dieselbe dezente Umrandung wie die übrigen Toolbar-Buttons. */
+        body.light-theme .preview-pause-btn.active,
+        body.light-theme .preview-pause-btn.active:hover {
+            border: 1px solid var(--border-strong) !important;
+            background: var(--bg-surface-2) !important;
+        }
+        .console-copy-error { margin-left:auto; opacity:.75; white-space:nowrap; min-width:max-content; }
+        .console-entry { display:flex; align-items:flex-start; gap:7px; }
+        .console-entry > span:nth-child(2) { flex:1; min-width:0; }
+        .python-console-entry { width:100%; box-sizing:border-box; padding:2px 0; }
+        .python-console-entry .console-copy-error { margin-left:auto; }
+
+        /* =========================================================
+           CODEFORGE PRO UI
+           ========================================================= */
+        :root {
+            /* === CodeForge Farbsystem: "Schmiede"-Konzept ===
+               Warmes, tiefes Anthrazit statt kaltem Standard-Editor-Grau.
+               EIN Akzent (Glut-Orange) statt vielen bunten Buttons -
+               bewusst sparsam eingesetzt für Fokus/Primäraktionen.
+               Klare Tiefenstaffelung: canvas < surface < surface-2 < inset. */
+            --bg-canvas: #17151b;
+            --bg-surface: #1e1b23;
+            --bg-surface-2: #28242e;
+            --bg-inset: #110f14;
+            --border: #322e3a;
+            --border-strong: #433d4d;
+            --text: #f1eee8;
+            --text-muted: #9d95a8;
+
+            --ember: #2f6fe0;
+            --ember-dim: #1f52ad;
+            --ember-glow: rgba(47, 111, 224, .32);
+
+            --bg: var(--bg-canvas);
+            --panel: var(--bg-surface);
+            --panel2: var(--bg-surface-2);
+            --muted: var(--text-muted);
+            --accent: var(--ember);
+            --success: #57b787;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+
+            /* Einheitliche Toggle/Filter-Zustände (HTML/CSS/JS/Konsole-
+               Buttons, Alle/Web/Python-Filter, Web/Python-Tabs):
+               AKTIV = kräftige Akzentfarbe mit weißer Schrift,
+               INAKTIV = neutrale Panel-Farbe mit gedämpfter Schrift.
+               Gilt identisch in Dark- und Light-Mode, nur die konkreten
+               Farbwerte passen sich pro Theme an. */
+            --toggle-active-bg: var(--ember);
+            --toggle-active-text: #ffffff;
+            --toggle-active-border: var(--ember);
+            --toggle-inactive-bg: var(--bg-surface-2);
+            --toggle-inactive-text: var(--text-muted);
+            --toggle-inactive-border: var(--border-strong);
+            --toggle-inactive-hover-bg: #332e3d;
+            --toggle-inactive-hover-text: var(--text);
+
+            /* Einheitliches Eingabefeld-System: JEDES Eingabefeld
+               (Text-Input, Textarea, Select) ist permanent umrandet -
+               nicht erst bei Fokus. Fokus hebt die Umrandung nur farblich
+               hervor. Gilt identisch in Dark- und Light-Mode, siehe
+               "PURE LIGHT MODE" weiter unten für die hellen Werte. */
+            --input-border: var(--border-strong);
+            --input-border-focus: var(--ember);
+            --input-focus-ring: var(--ember-glow);
+        }
+        /* Light-Theme-Variablen werden weiter unten an EINER zentralen
+           Stelle definiert (Abschnitt "PURE LIGHT MODE"), damit es hier
+           keine zwei widersprüchlichen Wertesätze mehr gibt. */
+        body.light-theme {
+            --toggle-active-bg: var(--ember);
+            --toggle-active-text: #ffffff;
+            --toggle-active-border: var(--ember);
+            --toggle-inactive-bg: #ffffff;
+            --toggle-inactive-text: #5c5866;
+            --toggle-inactive-border: #dcdee3;
+            --toggle-inactive-hover-bg: #f3f1ee;
+            --toggle-inactive-hover-text: #18151e;
+        }
+        body.light-theme { background: var(--bg); color: var(--text); }
+        body.light-theme #sidebar,
+        body.light-theme .top-bar,
+        body.light-theme .editor-header,
+        body.light-theme .restore-bar,
+        body.light-theme .preview-header,
+        body.light-theme .js-console-header { background: var(--panel); color: var(--text); }
+        body.light-theme .editor-container,
+        body.light-theme .editors-column,
+        body.light-theme #python-tab { background: var(--bg); }
+        body.light-theme #sidebar input,
+        body.light-theme #sidebar button { background: var(--panel2); color: var(--text); border-color: var(--border); }
+
+        #save-status { font-size: 11px; color: var(--success); min-width: 82px; text-align: right; font-weight: 600; }
+        #project-home-btn { font-size: 12px; }
+        #file-tree { display:none; }
+        .project-files { border-top:1px solid var(--border); margin-top:5px; padding-top:10px; }
+        .project-files-title { font-size:10px; color:var(--muted); margin-bottom:6px; letter-spacing:.04em; }
+        .file-tree-item { padding:6px 8px; border-radius:var(--radius-sm); cursor:pointer; font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+        .file-jump-highlight {
+            outline: 2px solid var(--input-border-focus);
+            outline-offset: -2px;
+            transition: outline-color .3s ease;
+        }
+        .file-tree-item:hover, .file-tree-item.active { background:var(--bg-surface-2); color:var(--text); }
+        body.light-theme .file-tree-item { color:#5c5866; }
+        body.light-theme .file-tree-item:hover, body.light-theme .file-tree-item.active { background:#f3f1ee; color:#18151e; }
+
+        /* ===== STARTSEITE: der eine bewusste "Hero"-Moment der App -
+           eine warme Glut hinter dem Wortmark, wie ein Schmiedefeuer. ===== */
+        #home-screen { position:absolute; inset:0; z-index:200; background:var(--bg-canvas); display:none; overflow:auto; }
+        .lang-toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            background: var(--bg-surface-2);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            padding: 8px 15px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .lang-toggle-btn:hover { border-color: var(--ember); }
+        body.light-theme .lang-toggle-btn {
+            background: #ffffff;
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+        body.light-theme .lang-toggle-btn:hover { border-color: var(--ember); }
+        #home-screen.active { display:block; }
+        .home-hero {
+            position: relative;
+            padding: 96px 30px 20px;
+            text-align: center;
+            overflow: hidden;
+        }
+        .home-hero::before {
+            content: "";
+            position: absolute;
+            top: -180px; left: 50%;
+            width: 640px; height: 420px;
+            transform: translateX(-50%);
+            background: radial-gradient(closest-side, var(--ember-glow), transparent 72%);
+            filter: blur(6px);
+            pointer-events: none;
+            animation: emberBreathe 6s ease-in-out infinite;
+        }
+        body.light-theme .home-hero::before { opacity: .5; }
+        @keyframes emberBreathe {
+            0%, 100% { opacity: .55; transform: translateX(-50%) scale(1); }
+            50%      { opacity: .85; transform: translateX(-50%) scale(1.06); }
+        }
+        .home-inner { max-width:920px; margin:0 auto; padding:0 30px 55px; position: relative; }
+        .home-logo { font-family: var(--font-display); font-size:46px; font-weight:700; letter-spacing:-0.02em; margin-bottom:10px; position: relative; }
+        .home-subtitle { color:var(--muted); margin-bottom:36px; font-size: 15px; }
+        .home-hero .home-logo, .home-hero .home-subtitle { position: relative; }
+        .home-actions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; margin-bottom:38px; text-align: left; }
+        .home-card { border:1px solid var(--border); background:var(--bg-surface); border-radius:var(--radius-lg); padding:26px; cursor:pointer; transition: border-color .15s ease, transform .15s ease; }
+        .home-card:hover { border-color:var(--ember); transform:translateY(-3px); }
+        .home-card h3 { margin:0 0 8px; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+        .home-card p { color:var(--muted); font-size:13px; line-height:1.55; }
+        #home-recent-title { text-align: left; font-family: var(--font-display); font-weight: 600; font-size: 15px; color: var(--text-muted); }
+        #recent-projects { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; text-align: left; }
+        .recent-item { background:var(--bg-surface); border:1px solid var(--border); padding:13px; border-radius:var(--radius-md); cursor:pointer; font-size: 13px; transition: border-color .15s ease; }
+        .recent-item:hover { border-color:var(--ember); }
+
+        #project-modal, #command-palette, #search-modal, #import-export-modal {
+            position:fixed; inset:0; z-index:500; display:none; align-items:center; justify-content:center;
+            background:rgba(10,8,12,.7); backdrop-filter:blur(3px);
+        }
+        #project-modal.open, #command-palette.open, #search-modal.open, #import-export-modal.open { display:flex; }
+        .modal-card { width:min(560px,92vw); background:var(--bg-surface); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; box-shadow:0 24px 70px rgba(0,0,0,.5); }
+        .modal-card h2 { margin-bottom:16px; font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+        .modal-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+        .modal-close-btn {
+            background: var(--bg-surface-2);
+            color: var(--text);
+            border: 1px solid var(--border-strong);
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .modal-close-btn:hover { border-color: var(--ember); }
+        body.light-theme .modal-close-btn {
+            background: #ffffff;
+            color: var(--text);
+            border-color: var(--border-strong);
+        }
+        body.light-theme .modal-close-btn:hover { border-color: var(--ember); }
+        .modal-row { margin-bottom:14px; }
+        .modal-row label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight: 600; }
+        .modal-row input, .modal-row select { width:100%; padding:10px 11px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); }
+        .type-choice { display:flex; gap:8px; }
+        .type-choice button { flex:1; padding:12px; border:1px solid var(--border); background:var(--bg-inset); color:var(--text); border-radius:var(--radius-sm); cursor:pointer; font-weight: 600; }
+        .type-choice button.active { border-color:var(--ember); background:var(--ember-glow); }
+        .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+        .modal-actions button { padding:9px 16px; border:1px solid transparent; border-radius:var(--radius-sm); cursor:pointer; font-weight: 600; }
+        .primary-btn { background:var(--ember); color:#ffffff; }
+        .primary-btn:hover { background:var(--ember-dim); color: #fff; }
+        .secondary-btn { background:var(--bg-surface-2); color:var(--text); border-color: var(--border-strong); }
+        .secondary-btn:hover { border-color: var(--ember); }
+
+        #command-input { width:100%; padding:12px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font-mono); }
+        #command-list { margin-top:10px; max-height:330px; overflow:auto; }
+        .command-item { padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size: 13px; }
+        .command-item:hover { background:var(--bg-surface-2); }
+        .search-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .search-grid input { padding:9px; background:var(--bg-inset); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); }
+        .search-result { margin-top:10px; max-height:250px; overflow:auto; font-size:12px; color:var(--muted); }
+
+        /* =========================================================
+           EINHEITLICHES EINGABEFELD-SYSTEM
+           Jedes Text-Eingabefeld der App (egal ob Sidebar-Suche, Modals,
+           Command Palette, Python-Terminal-Eingabe, "Neues Projekt"...)
+           ist PERMANENT umrandet - in Dark UND Light Mode - statt nur bei
+           Fokus. Bei Fokus wird die Umrandung zusätzlich farblich betont
+           (Akzentfarbe + dezenter Schein), damit klar ist, wo man gerade
+           tippt. Eine Regel für die ganze App statt verstreuter Einzelfälle.
+           ========================================================= */
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+        textarea,
+        select {
+            border: 1px solid var(--input-border) !important;
+            border-radius: var(--radius-sm);
+        }
+        input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--input-border-focus) !important;
+            outline: 2px solid var(--input-focus-ring) !important;
+            outline-offset: 0;
+        }
+
+        #mobile-file-tabs { display:none; }
+        @media (max-width: 760px) {
+            #sidebar { width:190px; }
+            .home-actions { grid-template-columns:1fr; }
+            .home-hero { padding: 60px 18px 10px; }
+            .home-inner { padding:0 18px 35px; }
+            .home-logo { font-size:32px; }
+            #web-tab .editors-column { width:100% !important; }
+            #web-tab .col-divider { display:none !important; }
+            #web-tab .preview-container { display:none; }
+            #mobile-file-tabs { display:flex; background:var(--panel); border-bottom:1px solid var(--border); }
+            #mobile-file-tabs button { flex:1; padding:8px; border:0; background:transparent; color:var(--muted); }
+            #mobile-file-tabs button.active { color:var(--toggle-active-text); background:var(--accent); }
+            .editor-box.mobile-hidden { display:none !important; }
+            .action-container .action-btn:nth-child(1), .action-container .action-btn:nth-child(2) { display:none; }
+            .preview-header-right .icon-btn { display:none; }
+            .search-grid { grid-template-columns:1fr; }
+        }
+
+    
+        /* =========================================================
+           PURE LIGHT MODE
+           Bewusst NICHT das inzwischen übliche warme Creme-Beige, sondern
+           ein klares, kühles Neutral - wie eine helle Werkstatt bei
+           Tageslicht. Der Glut-Akzent bleibt derselbe wie im Dark Mode,
+           nur etwas kräftiger/dunkler für genug Kontrast auf Weiß.
+           ========================================================= */
+        body.light-theme {
+            --bg-canvas: #f5f6f8;
+            --bg-surface: #ffffff;
+            --bg-surface-2: #eef0f3;
+            --bg-inset: #edeff2;
+            --border: #dde1e6;
+            --border-strong: #c7cdd4;
+            --text: #1b1a1f;
+            --text-muted: #68717c;
+
+            --ember: #2f6fe0;
+            --ember-dim: #1f52ad;
+            --ember-glow: rgba(47, 111, 224, .14);
+
+            --bg: var(--bg-canvas);
+            --panel: var(--bg-surface);
+            --panel2: var(--bg-surface-2);
+            --muted: var(--text-muted);
+            --accent: var(--ember);
+            --success: #18864b;
+            --input-border: var(--border-strong);
+            --input-border-focus: var(--ember);
+            --input-focus-ring: var(--ember-glow);
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
+        }
+
+        body.light-theme,
+        body.light-theme * {
+            scrollbar-color: #c5cbd2 #f1f3f5;
+        }
+
+        body.light-theme #sidebar,
+        body.light-theme .top-bar,
+        body.light-theme .editor-header,
+        body.light-theme .restore-bar,
+        body.light-theme .preview-header,
+        body.light-theme .js-console-header {
+            background: #ffffff !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+        }
+
+        body.light-theme #main,
+        body.light-theme .editor-container,
+        body.light-theme .editors-column,
+        body.light-theme #web-tab,
+        body.light-theme #python-tab,
+        body.light-theme .preview-container {
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
+        }
+
+        /* Alle normalen Eingabefelder */
+        body.light-theme input,
+        body.light-theme textarea,
+        body.light-theme select,
+        body.light-theme button:not(.primary-btn):not(#reset-web-btn):not(#reset-py-btn):not(#run-py-btn):not(.action-btn):not(.active):not(.active-tab) {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme input::placeholder,
+        body.light-theme textarea::placeholder {
+            color: #8a929c !important;
+        }
+
+        body.light-theme input:focus,
+        body.light-theme textarea:focus,
+        body.light-theme select:focus {
+            border-color: var(--ember) !important;
+            outline: 2px solid var(--ember-glow) !important;
+        }
+
+        /* Sidebar */
+        body.light-theme #sidebar input,
+        body.light-theme #sidebar button {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme #sidebar h3,
+        body.light-theme #sidebar label {
+            color: var(--text-muted) !important;
+        }
+
+        body.light-theme #sidebar button:hover {
+            background: var(--bg-surface-2) !important;
+        }
+
+        /* Projektliste / Dateibaum */
+        body.light-theme #project-list li,
+        body.light-theme .file-tree-item {
+            color: #30363d !important;
+        }
+
+        body.light-theme #project-list li:hover,
+        body.light-theme #project-list li.active,
+        body.light-theme .file-tree-item:hover,
+        body.light-theme .file-tree-item.active {
+            background: var(--bg-surface-2) !important;
+            color: #111827 !important;
+        }
+
+        /* Tabs und Toolbar */
+        body.light-theme .icon-btn,
+        body.light-theme .copy-btn {
+            color: #3f4852 !important;
+            background: var(--bg-surface) !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme .icon-btn:hover,
+        body.light-theme .copy-btn:hover {
+            background: var(--bg-surface-2) !important;
+            color: #111827 !important;
+        }
+
+        /* Live-Vorschau Pause/Play bleibt in beiden Themes blau */
+        /* Pause/Play-Icon: in beiden Themes exakt dieselbe blaue Farbe. */
+        .preview-pause-btn,
+        .preview-pause-btn:hover,
+        .preview-pause-btn.active,
+        .preview-pause-btn.active:hover,
+        body.light-theme .preview-pause-btn,
+        body.light-theme .preview-pause-btn:hover,
+        body.light-theme .preview-pause-btn.active,
+        body.light-theme .preview-pause-btn.active:hover {
+            color: var(--ember) !important;
+        }
+        /* Sprachabhängiger Tooltip für die Web-Pause-Schaltfläche.
+           Kein natives title-Tooltip mehr, damit nach einem Sprachwechsel
+           garantiert immer der aktuelle Text angezeigt wird. */
+        #preview-pause-btn[data-preview-tooltip] {
+            position: relative;
+        }
+        #preview-pause-btn[data-preview-tooltip]::after {
+            content: attr(data-preview-tooltip);
+            position: absolute;
+            top: calc(100% + 7px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            padding: 5px 8px;
+            border-radius: 3px;
+            background: #1f2937;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.2;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .08s ease;
+        }
+        #preview-pause-btn[data-preview-tooltip]:hover::after,
+        #preview-pause-btn[data-preview-tooltip]:focus-visible::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #preview-pause-icon {
+            color: var(--ember) !important;
+            stroke: var(--ember) !important;
+        }
+
+        /* .action-btn (↩ ↪ ✨ Formatieren, 🔎 Suchen, ⌘ Command, 🌓 Theme,
+           ⛶ Editor) im selben neutralen Stil wie die Sidebar-Buttons
+           "Neues Projekt", "Speichern" etc. (.colored-sidebar-btn). */
+        body.light-theme .action-btn {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+        }
+        body.light-theme .action-btn:hover {
+            border-color: var(--ember) !important;
+            color: var(--text) !important;
+        }
+
+        /* body.light-theme .tab-btn.active ist jetzt über die
+           einheitlichen --toggle-active-* Tokens in der Basisregel
+           von .tab-btn.active geregelt (siehe oben, gleiches Prinzip
+           wie bei .restore-btn.active-tab und .filter-btn.active). */
+
+        /* CodeMirror komplett hell */
+        body.light-theme .CodeMirror,
+        body.light-theme .CodeMirror-gutters,
+        body.light-theme .CodeMirror-scroll,
+        body.light-theme .CodeMirror-sizer,
+        body.light-theme .CodeMirror-lines {
+            background: var(--bg-inset) !important;
+            color: #24292f !important;
+        }
+
+        body.light-theme .CodeMirror-gutters {
+            border-right: 1px solid var(--border) !important;
+        }
+
+        body.light-theme .CodeMirror-linenumber {
+            color: #8c959f !important;
+        }
+
+        body.light-theme .CodeMirror-cursor {
+            border-left-color: var(--ember) !important;
+        }
+
+        body.light-theme .CodeMirror-selected,
+        body.light-theme .CodeMirror-focused .CodeMirror-selected {
+            background: var(--ember-glow) !important;
+        }
+
+        body.light-theme .CodeMirror-activeline-background {
+            background: #f6f8fa !important;
+        }
+
+        /* Python Terminal */
+        body.light-theme #python-output,
+        body.light-theme #python-input {
+            background: var(--bg-inset) !important;
+            color: #24292f !important;
+            border-color: var(--border) !important;
+        }
+
+        body.light-theme #python-input {
+            caret-color: var(--ember) !important;
+        }
+        body.light-theme #python-input-prompt { color: var(--ember) !important; }
+
+        /* Restore / Import / Export-Bereich */
+        body.light-theme .restore-bar,
+        body.light-theme .restore-bar * {
+            color: #30363d !important;
+        }
+
+        body.light-theme .restore-bar button {
+            background: var(--bg-surface) !important;
+            color: #30363d !important;
+            border: 1px solid var(--border-strong) !important;
+        }
+
+        body.light-theme .restore-bar button:hover {
+            background: var(--bg-surface-2) !important;
+        }
+
+        body.light-theme .restore-bar input {
+            background: var(--bg-surface) !important;
+            color: #24292f !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        /* Dialoge / Modals */
+        body.light-theme #project-modal,
+        body.light-theme #command-palette,
+        body.light-theme #search-modal,
+        body.light-theme #import-export-modal {
+            background: rgba(27,26,31,.35) !important;
+        }
+
+        body.light-theme .modal-card {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+            box-shadow: 0 20px 55px rgba(27,26,31,.14) !important;
+        }
+
+        body.light-theme .modal-card h2,
+        body.light-theme .modal-card h3,
+        body.light-theme .modal-card label {
+            color: var(--text) !important;
+        }
+
+        body.light-theme .modal-row input,
+        body.light-theme .modal-row select,
+        body.light-theme #command-input,
+        body.light-theme #search-term,
+        body.light-theme #replace-term {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme .secondary-btn {
+            background: var(--bg-surface-2) !important;
+            color: #24292f !important;
+            border: 1px solid var(--border-strong) !important;
+        }
+
+        body.light-theme .secondary-btn:hover {
+            border-color: var(--ember) !important;
+        }
+
+        body.light-theme .type-choice button {
+            background: var(--bg-surface) !important;
+            color: #30363d !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme .type-choice button.active {
+            background: var(--ember-glow) !important;
+            color: var(--ember-dim) !important;
+            border-color: var(--ember) !important;
+        }
+
+        body.light-theme .command-item:hover {
+            background: var(--bg-surface-2) !important;
+        }
+
+        /* Startseite */
+        body.light-theme #home-screen {
+            background: var(--bg-canvas) !important;
+            color: var(--text) !important;
+        }
+
+        body.light-theme .home-card,
+        body.light-theme .recent-item {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+            border-color: var(--border) !important;
+        }
+
+        body.light-theme .home-card:hover,
+        body.light-theme .recent-item:hover {
+            border-color: var(--ember) !important;
+            box-shadow: 0 6px 20px rgba(27,26,31,.07);
+        }
+
+        body.light-theme .home-subtitle,
+        body.light-theme .home-card p {
+            color: var(--text-muted) !important;
+        }
+
+        /* Select-Optionen */
+        body.light-theme option {
+            background: var(--bg-surface) !important;
+            color: var(--text) !important;
+        }
+
+        /* Trenner */
+        body.light-theme .col-divider,
+        body.light-theme hr {
+            background: var(--border) !important;
+            border-color: var(--border) !important;
+        }
+
+        /* Speichern-Anzeige */
+        body.light-theme #save-status {
+            color: var(--success) !important;
+        }
+
+    
+        #browser-back-btn {
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 1000;
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-surface);
+            color: var(--text);
+            font-size: 22px;
+            line-height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #browser-back-btn:hover { border-color: var(--ember); }
+        body.light-theme #browser-back-btn {
+            background: #fff !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+            box-shadow: 0 1px 3px rgba(27,26,31,.06);
+        }
+        body.light-theme #browser-back-btn:hover {
+            border-color: var(--ember) !important;
+        }
+
+        /* Projektliste bleibt im Light Mode dauerhaft hell. */
+        body.light-theme #project-list,
+        body.light-theme #project-list li {
+            background: transparent !important;
+            color: #24292f !important;
+        }
+        body.light-theme #project-list li:hover,
+        body.light-theme #project-list li.active {
+            background: var(--bg-surface-2) !important;
+            color: #111827 !important;
+        }
+
+        /* Web-Konsole im Light Mode wirklich weiß. */
+        body.light-theme .js-console-header {
+            background: #ffffff !important;
+            color: #24292f !important;
+        }
+
+    
+        body.light-theme .cm-s-default .cm-keyword { color: #8b1a9b !important; font-weight: 600; }
+        body.light-theme .cm-s-default .cm-atom { color: #005cc5 !important; }
+        body.light-theme .cm-s-default .cm-number { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-def { color: #8250df !important; }
+        body.light-theme .cm-s-default .cm-variable { color: #24292f !important; }
+        body.light-theme .cm-s-default .cm-variable-2 { color: #0a6b5b !important; }
+        body.light-theme .cm-s-default .cm-variable-3 { color: #116329 !important; }
+        body.light-theme .cm-s-default .cm-property { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-operator { color: #cf222e !important; }
+        body.light-theme .cm-s-default .cm-comment { color: #6e7781 !important; font-style: italic; }
+        body.light-theme .cm-s-default .cm-string,
+        body.light-theme .cm-s-default .cm-string-2 {
+            color: #0a6b5b !important;
+        }
+        body.light-theme .cm-s-default .cm-meta { color: #9a6700 !important; }
+        body.light-theme .cm-s-default .cm-qualifier { color: #953800 !important; }
+        body.light-theme .cm-s-default .cm-builtin { color: #8250df !important; }
+        body.light-theme .cm-s-default .cm-tag { color: #116329 !important; }
+        body.light-theme .cm-s-default .cm-attribute { color: #0550ae !important; }
+        body.light-theme .cm-s-default .cm-bracket { color: #57606a !important; }
+        body.light-theme .cm-s-default .cm-link { color: #0969da !important; text-decoration: underline; }
+        body.light-theme .cm-s-default .cm-error { color: #cf222e !important; background: transparent !important; }
+        body.light-theme .cm-s-default .cm-searching {
+            background: #fff8c5 !important;
+            outline: 1px solid #d4a72c !important;
+        }
+
+    
+        #text-dialog {
+            position: fixed; inset: 0; z-index: 700;
+            display: none; align-items: center; justify-content: center;
+            background: rgba(10,8,12,.7); backdrop-filter: blur(3px);
+        }
+        #text-dialog.open { display:flex; }
+        body.light-theme #text-dialog { background: rgba(27,26,31,.35) !important; }
+        body.light-theme #text-dialog .modal-card {
+            background:#fff !important; color:var(--text) !important;
+            border-color:var(--border) !important;
+        }
+
+    
+        .console-entry {
+            display:grid;
+            grid-template-columns:24px 1fr;
+            gap:6px;
+            padding:4px 0;
+            border-bottom:1px solid rgba(128,128,128,.12);
+            white-space:pre-wrap;
+            word-break:break-word;
+        }
+        .console-entry .console-icon { font-weight:700; }
+        .console-entry.info .console-icon { color:#0969da; }
+        .console-entry.success .console-icon { color:#18864b; }
+        .console-entry.warn .console-icon { color:#9a6700; }
+        .console-entry.error .console-icon { color:#cf222e; }
+        .console-location {
+            display:block;
+            margin-top:2px;
+            color:#6e7781;
+            font-size:11px;
+        }
+        .console-entry-clickable {
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .console-entry-clickable:hover {
+            background: rgba(255,255,255,.07);
+        }
+        body.light-theme .console-entry-clickable:hover {
+            background: rgba(0,0,0,.05);
+        }
+        .console-entry-clickable .console-location {
+            text-decoration: underline;
+        }
+        /* Zeile im JS-Editor, zu der von einem Konsolen-Fehler aus gesprungen wurde */
+        .js-error-line-highlight {
+            background: rgba(220,53,69,.28) !important;
+            transition: background 1.4s ease;
+        }
+        body:not(.light-theme) .console-entry.info .console-icon { color:#58a6ff; }
+        body:not(.light-theme) .console-entry.success .console-icon { color:#7ee787; }
+        body:not(.light-theme) .console-entry.warn .console-icon { color:#d29922; }
+        body:not(.light-theme) .console-entry.error .console-icon { color:#ff7b72; }
+
+    
+        /* Sidebar-Buttons: neutral in beiden Themes, EINE Ausnahme:
+           "+ Neues Projekt" ist die primäre Aktion der Sidebar und bekommt
+           als einziger Button die Akzentfarbe (Glut-Orange gefüllt) -
+           statt dass (wie vorher) alle Buttons gleich aussehen. */
+        #sidebar > h3 {
+            margin-top: 2px;
+            margin-left: 42px !important;
+            padding-left: 0;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            font-family: var(--font-display);
+            font-weight: 600;
+        }
+        .colored-sidebar-btn {
+            font-weight: 600 !important;
+            background: var(--bg-surface-2) !important;
+            color: var(--text) !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm) !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-icon { width: 14px; height: 14px; flex-shrink: 0; }
+        .colored-sidebar-btn:hover {
+            border-color: var(--ember) !important;
+        }
+        body.light-theme .colored-sidebar-btn {
+            background: #ffffff !important;
+            color: var(--text) !important;
+            border-color: var(--border-strong) !important;
+        }
+        body.light-theme .colored-sidebar-btn:hover {
+            border-color: var(--ember) !important;
+        }
+
+        /* .filter-btn / .filter-btn.active sind jetzt über die
+           einheitlichen --toggle-active-*/--toggle-inactive-* Tokens
+           in der Basisregel geregelt (siehe oben) - gilt automatisch
+           für Dark- und Light-Mode gleichermaßen. */
+
+        /* Back arrow must never overlap the CodeForge title. */
+        #browser-back-btn { left:8px !important; }
+        #sidebar { padding-top:15px !important; }
+
+        /* Wenn die Sidebar eingeklappt ist, rutscht die Top-Bar bis an den
+           linken Rand und der Sidebar-Toggle (☰) landet genau unter dem
+           fixen Zurück-Pfeil oben links. Deshalb die Top-Bar-Inhalte in
+           diesem Fall etwas einrücken, damit sich beide Buttons nicht
+           mehr überlappen und die Sidebar wieder ausgeklappt werden kann. */
+        body.sidebar-collapsed .top-bar { padding-left: 50px; transition: padding-left .2s ease; }
+        @media (max-width:760px) {
+            body.sidebar-collapsed .top-bar { padding-left: 46px; }
+        }
+
+        /* The actual console element in this app is #js-console-output. */
+        body.light-theme #js-console-output {
+            background:var(--bg-inset) !important;
+            color:#24292f !important;
+            border-color:var(--border) !important;
+        }
+        body.light-theme .console-entry {
+            border-bottom-color: rgba(0,0,0,.08) !important;
+        }
+        body.light-theme .console-location { color:#6e7781 !important; }
+
+        /* Console button */
+        #clear-console-btn {
+            background:var(--bg-surface-2) !important;
+            color:var(--text) !important;
+            border:1px solid var(--border-strong) !important;
+            border-radius: var(--radius-sm) !important;
+            cursor:pointer !important;
+        }
+        #clear-console-btn:hover { border-color: var(--ember) !important; }
+
+    
+        #confirm-dialog {
+            position:fixed; inset:0; z-index:710; display:none; align-items:center; justify-content:center;
+            background:rgba(10,8,12,.7); backdrop-filter:blur(3px);
+        }
+        #confirm-dialog.open { display:flex; }
+
+        /* Kompakte Fusszeile der Seitenleiste */
+        .sidebar-footer { display:flex; gap:6px; padding-top:9px; margin-top:2px; border-top:1px solid var(--border); }
+        .sidebar-foot-btn {
+            flex:1; width:auto !important; display:flex; align-items:center; justify-content:center;
+            gap:5px; padding:7px 6px !important; font-size:11px !important; font-weight:600 !important;
+            color:var(--text-muted) !important; background:transparent !important;
+            border:1px solid transparent !important; border-radius:var(--radius-sm) !important;
+            cursor:pointer; overflow:hidden; white-space:nowrap;
+        }
+        .sidebar-foot-btn:hover { background:var(--bg-surface-2) !important; color:var(--text) !important; }
+        .sidebar-foot-btn .btn-icon { width:13px; height:13px; flex-shrink:0; }
+
+        /* Startseite: Schnellaktionen + Kennzahlen */
+        .home-logo-mark { width:38px; height:38px; color:var(--ember); vertical-align:-7px; margin-right:12px; }
+        .home-quick { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 6px; }
+        .home-quick-btn {
+            display:flex; align-items:center; gap:7px; padding:10px 15px;
+            border:1px solid var(--border); border-radius:var(--radius-md);
+            background:var(--bg-surface); color:var(--text); cursor:pointer;
+            font-size:13px; font-weight:600; transition:border-color .15s ease, transform .15s ease;
+        }
+        .home-quick-btn:hover { border-color:var(--ember); transform:translateY(-2px); }
+        .home-quick-btn .btn-icon { width:15px; height:15px; }
+        body.light-theme .home-quick-btn { background:#fff; border-color:#e4e2e6; color:#18151e; }
+        .home-stats { color:var(--muted); font-size:12px; margin:14px 0 26px; }
+
+        /* Schalter "Startseite beim Oeffnen anzeigen" - eine ruhige
+           Einstellung, kein Hauptknopf. */
+        .home-settings { display:flex; flex-direction:column; gap:7px; margin:-16px 0 26px; }
+        .home-toggle {
+            display:inline-flex; align-items:center; gap:9px; cursor:pointer;
+            color:var(--muted); font-size:12.5px;
+            user-select:none;
+        }
+        .home-toggle:hover { color:var(--text); }
+        .home-toggle input { width:15px; height:15px; accent-color:var(--ember); cursor:pointer; margin:0; }
+
+        /* Befehlspalette: Ordnername als Zusatzinfo hinter einem Projekt */
+        .command-item { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .command-hint { font-size:11px; color:var(--text-muted); flex-shrink:0; }
+        .command-note { padding:12px 10px; color:var(--text-muted); font-size:13px; }
+
+        /* Papierkorb */
+        #trash-modal {
+            position:fixed; inset:0; background:rgba(10,9,12,.62);
+            display:none; align-items:center; justify-content:center; z-index:400;
+        }
+        #trash-modal.open { display:flex; }
+        body.light-theme #trash-modal { background:rgba(27,26,31,.35); }
+        #trash-list { max-height:min(52vh,420px); overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+        .trash-row {
+            display:flex; align-items:center; gap:10px; padding:9px 10px;
+            border:1px solid var(--border); border-radius:var(--radius-sm);
+            background:var(--bg-surface-2);
+        }
+        body.light-theme .trash-row { background:#fff; border-color:#e4e2e6; }
+        .trash-icon { font-size:14px; flex-shrink:0; }
+        .trash-info { flex:1 1 auto; min-width:0; }
+        .trash-name { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .trash-meta { font-size:11px; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .trash-btn {
+            flex-shrink:0; padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer;
+            border-radius:var(--radius-sm); border:1px solid var(--border-strong);
+            background:var(--bg-surface); color:var(--text);
+        }
+        .trash-restore:hover { border-color:var(--ember); color:var(--ember); }
+        .trash-purge { color:var(--text-muted); }
+        .trash-purge:hover { border-color:#d9534f; color:#d9534f; }
+        .trash-empty-state { padding:26px 10px; text-align:center; color:var(--text-muted); font-size:13px; }
+
+        /* Zaehler an den Papierkorb-Schaltern */
+        .trash-count {
+            margin-left:6px; padding:1px 6px; border-radius:999px;
+            background:var(--bg-surface-2); color:var(--text-muted);
+            font-size:10px; font-weight:700; font-variant-numeric:tabular-nums;
+        }
+
+        body.light-theme #confirm-dialog { background:rgba(27,26,31,.35) !important; }
+
+        @media (max-width:760px) {
+            #browser-back-btn { left:6px !important; top:6px !important; }
+        }
+
+    
+        /* =========================================================
+           TOAST-BENACHRICHTIGUNGEN
+           Ersetzt native, hässliche Browser-alert()-Popups durch eigene,
+           ins Design passende Hinweise (verschwinden von selbst, blockieren
+           nichts). Ein System für Erfolg/Warnung/Fehler statt verstreuter
+           alert()-Aufrufe.
+           ========================================================= */
+        #toast-container {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: min(420px, 88vw);
+            padding: 11px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: var(--font-ui);
+            color: #fff;
+            background: var(--bg-surface-2);
+            border: 1px solid var(--border-strong);
+            box-shadow: 0 8px 24px rgba(0,0,0,.35);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity .2s ease, transform .2s ease;
+        }
+        .toast.toast-show { opacity: 1; transform: translateY(0); }
+        .toast.toast-hide { opacity: 0; transform: translateY(-10px); }
+        .toast .toast-icon { flex-shrink: 0; font-size: 15px; }
+        .toast.toast-success { background: #1c3d2c; border-color: #57b787; }
+        .toast.toast-warning { background: #453723; border-color: #e8b339; }
+        .toast.toast-error   { background: #45232a; border-color: #f0555a; }
+
+        body.light-theme .toast {
+            color: var(--text);
+            box-shadow: 0 8px 24px rgba(0,0,0,.12);
+        }
+        body.light-theme .toast.toast-success { background: #dcf3e6; border-color: #18864b; }
+        body.light-theme .toast.toast-warning { background: #fdf0d5; border-color: #9a6700; }
+        body.light-theme .toast.toast-error   { background: #fbe2e2; border-color: #d1242f; }
+
+        /* Sidebar-Aktionsbuttons bleiben im Light Mode neutral (weiß/grau,
+           fette Schrift) statt farbig – siehe .colored-sidebar-btn oben. */
+
+    
+        /* =========================================================
+           EDITOR DIVIDERS / SLIDERS – gleiche Optik wie Live Preview
+           (row-divider = Trenner zwischen HTML/CSS/JS,
+            col-divider = Trenner zwischen Editoren und Vorschau)
+           ========================================================= */
+        .col-divider,
+        .row-divider {
+            background: var(--border-strong) !important;
+            border: 0 !important;
+            opacity: .9;
+            transition: background .15s, opacity .15s;
+        }
+        .col-divider:hover,
+        .row-divider:hover {
+            background: var(--ember) !important;
+            opacity: 1;
+        }
+        /* Im Light Mode: helle, dezente Trenner wie im Live-Vorschau-Bereich */
+        body.light-theme .col-divider,
+        body.light-theme .row-divider {
+            background: var(--border) !important;
+            border-color: var(--border) !important;
+            opacity: 1 !important;
+        }
+        body.light-theme .col-divider:hover,
+        body.light-theme .row-divider:hover {
+            background: var(--ember) !important;
+        }
+
+        /* Gleiche Dicke wie die Trenner zwischen HTML/CSS/JS (.row-divider, 6px) */
+        .col-divider {
+            width: 6px !important;
+            cursor: col-resize !important;
+        }
+
+    
+        #close-web-console {
+            margin-left: auto !important;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+        }
+        body.light-theme #close-web-console {
+            background: #fff !important;
+            color: #24292f !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        /* =========================================================
+           EINGEBLENDET/AUSGEBLENDET-STATUS DER HTML/CSS/JS/KONSOLE-
+           TOGGLE-BUTTONS (oben in der restore-bar): aktiv = Glut-Akzent,
+           inaktiv = weiß im Light Mode - identisch zum Dark Mode
+           (dort: aktiv = Glut-Akzent, inaktiv = dunkelgrau).
+           ========================================================= */
+        body.light-theme .restore-btn.active-tab {
+            background: var(--ember) !important;
+            color: #ffffff !important;
+            border-color: var(--ember) !important;
+        }
+        body.light-theme .restore-btn.active-tab:hover {
+            background: var(--ember-dim) !important;
+            color: #ffffff !important;
+        }
+        body.light-theme .restore-btn:not(.active-tab) {
+            background: #ffffff !important;
+            color: #4b5563 !important;
+            border-color: var(--border-strong) !important;
+        }
+        body.light-theme .restore-btn:not(.active-tab):hover {
+            background: var(--bg-surface-2) !important;
+            color: #111827 !important;
+        }
+
+    
+        /* =========================================================
+           HIGH-CONTRAST LIGHT CODE HIGHLIGHTING
+           ========================================================= */
+        body.light-theme .CodeMirror {
+            color: #1f2328 !important;
+            background: #ffffff !important;
+        }
+        body.light-theme .CodeMirror .cm-keyword { color: #7a1fa2 !important; font-weight: 700; }
+        body.light-theme .CodeMirror .cm-atom { color: #0550ae !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-number { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-def { color: #8250df !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-variable { color: #24292f !important; }
+        body.light-theme .CodeMirror .cm-variable-2 { color: #0a6b5b !important; }
+        body.light-theme .CodeMirror .cm-variable-3 { color: #116329 !important; }
+        body.light-theme .CodeMirror .cm-property { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-operator { color: #cf222e !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-comment { color: #6e7781 !important; font-style: italic; }
+        body.light-theme .CodeMirror .cm-string,
+        body.light-theme .CodeMirror .cm-string-2 { color: #0a6b5b !important; }
+        body.light-theme .CodeMirror .cm-meta { color: #9a6700 !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-qualifier { color: #953800 !important; }
+        body.light-theme .CodeMirror .cm-builtin { color: #8250df !important; font-weight: 600; }
+        body.light-theme .CodeMirror .cm-tag { color: #cf222e !important; font-weight: 700; }
+        body.light-theme .CodeMirror .cm-attribute { color: #0550ae !important; }
+        body.light-theme .CodeMirror .cm-bracket { color: #57606a !important; }
+        body.light-theme .CodeMirror .cm-link { color: #0969da !important; }
+        body.light-theme .CodeMirror .cm-error {
+            color: #cf222e !important;
+            background: transparent !important;
+            text-decoration: underline wavy #cf222e;
+        }
+
+        /* Markierungen / Suchhighlight deutlich lesbarer */
+        body.light-theme .CodeMirror-selected,
+        body.light-theme .CodeMirror-focused .CodeMirror-selected {
+            background: #b6d7ff !important;
+        }
+        body.light-theme .CodeMirror-activeline-background {
+            background: #f0f6fc !important;
+        }
+        body.light-theme .cm-s-default .cm-searching {
+            background: #fff3b0 !important;
+            color: #1f2328 !important;
+            outline: 2px solid #d4a72c !important;
+        }
+
+    
+    
+        /* ===== WEB LIVE PREVIEW FIX ===== */
+        /* Nur anwenden, wenn der Web-Tab auch wirklich aktiv ist - sonst
+           würde er (wie zuvor) IMMER angezeigt und sich mit dem
+           Python-Tab überlappen/vermischen. */
+        #web-tab.active {
+            display: flex !important;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        #web-tab .editors-column,
+        #web-tab .preview-container {
+            min-height: 0;
+        }
+
+        /* Live-Vorschau erzwingt "flex" nur ab Desktop-Breite. Auf Mobile
+           (siehe @media max-width:760px weiter oben) soll die Vorschau
+           komplett ausgeblendet bleiben, solange ein einzelner Editor
+           (HTML/CSS/JS) angezeigt wird - das !important hier hat vorher
+           die mobile display:none-Regel überstimmt und dadurch das
+           Mobile-Layout kaputt gemacht (Vorschau + Editor quetschten sich
+           nebeneinander in die Breite). */
+        @media (min-width: 761px) {
+            #web-tab .preview-container {
+                display: flex !important;
+                flex-direction: column;
+                flex: 1 1 0;
+                min-width: 0;
+                overflow: hidden;
+            }
+        }
+
+        #web-tab iframe,
+        #preview-frame {
+            display: block !important;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            border: 0;
+            background: #fff;
+        }
+
+        body.light-theme #web-tab .preview-container {
+            background: #fff !important;
+        }
+
+        /* =========================================================
+           ECHTES BROWSER-VOLLBILD DER LIVE-VORSCHAU
+           Im Vollbild ist der Vorschau-Container das oberste Element.
+           Er muss die ganze Flaeche fuellen und seine Konsole unten
+           behalten (Kopfzeile - Vorschau - Konsole).
+           Hinweis: :fullscreen und :-webkit-full-screen muessen in
+           GETRENNTEN Regeln stehen. In einer gemeinsamen Selektorliste
+           wuerde ein Browser, der eine der beiden nicht kennt, die
+           komplette Regel verwerfen.
+           ========================================================= */
+        #preview-container:fullscreen {
+            width: 100%;
+            height: 100%;
+            display: flex !important;
+            flex-direction: column;
+            background: #fff;
+        }
+        #preview-container:fullscreen #preview-frame {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: 0;
+        }
+        #preview-container:fullscreen .js-console-container {
+            flex-shrink: 0;
+        }
+
+        /* Konsolen-Schalter der Kopfzeile: ausserhalb des Vollbilds
+           unsichtbar, damit die normale Oberflaeche unveraendert bleibt. */
+        #preview-console-btn { display: none; }
+        #preview-container:fullscreen #preview-console-btn { display: inline-flex; }
+
+        #preview-container:-webkit-full-screen {
+            width: 100%;
+            height: 100%;
+            display: flex !important;
+            flex-direction: column;
+            background: #fff;
+        }
+        #preview-container:-webkit-full-screen #preview-frame {
+            flex: 1 1 auto;
+            height: auto;
+            min-height: 0;
+        }
+        #preview-container:-webkit-full-screen .js-console-container {
+            flex-shrink: 0;
+        }
+        #preview-container:-webkit-full-screen #preview-console-btn { display: inline-flex; }
+
+    
+        /* =========================================================
+           FINAL PYTHON + FILTER LIGHT MODE FIX
+           ========================================================= */
+
+        /* Python: den schwarzen Terminal-/Eingabe-Balken im Light Mode
+           vollständig entfernen und durch die helle Oberfläche ersetzen. */
+        body.light-theme .python-terminal,
+        body.light-theme #python-output,
+        body.light-theme #python-input-row,
+        body.light-theme #python-input,
+        body.light-theme #python-input-prompt {
+            background: var(--bg-inset) !important;
+            color: #24292f !important;
+            border-color: var(--border) !important;
+        }
+
+        /* .python-terminal Rahmenfarbe kommt jetzt einheitlich aus
+           var(--input-border) (siehe :root/.light-theme) - keine
+           doppelte Definition mehr nötig. */
+
+        body.light-theme #python-input {
+            caret-color: var(--ember) !important;
+        }
+
+        /* Mehrere Python-Eingaben: genug Höhe und saubere Zeilen,
+           damit Text nicht oben/unten abgeschnitten wird. */
+        body.light-theme #python-output {
+            padding: 12px !important;
+            line-height: 1.65 !important;
+            overflow-y: auto !important;
+        }
+
+        body.light-theme #python-input-row {
+            min-height: 40px !important;
+            height: auto !important;
+            padding: 7px 12px 8px !important;
+            align-items: center !important;
+            line-height: 1.5 !important;
+        }
+
+        body.light-theme #python-input-prompt,
+        body.light-theme #python-input {
+            line-height: 1.5 !important;
+            min-height: 24px !important;
+        }
+
+        body.light-theme #python-input {
+            padding: 2px 0 !important;
+        }
+
+        /* Filter: ausgewählter Filter immer deutlich im Akzent,
+           nicht ausgewählte Filter weiß – wie im Dark Mode. */
+        body.light-theme .type-filter-bar .filter-btn.active,
+        body.light-theme #filter-btn-all.active,
+        body.light-theme #filter-btn-web.active,
+        body.light-theme #filter-btn-python.active {
+            background: var(--ember) !important;
+            color: #ffffff !important;
+            border-color: var(--ember) !important;
+            font-weight: bold !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn:not(.active) {
+            background: #ffffff !important;
+            color: #4b5563 !important;
+            border-color: var(--border-strong) !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn:not(.active):hover {
+            background: var(--bg-surface-2) !important;
+            color: var(--text) !important;
+        }
+
+    
+        /* Fix: aktiver Filter bleibt beim Hover lesbar */
+        body.light-theme .type-filter-bar .filter-btn.active,
+        body.light-theme .type-filter-bar .filter-btn.active:hover,
+        body.light-theme .type-filter-bar .filter-btn.active:focus,
+        body.light-theme .type-filter-bar .filter-btn.active:active,
+        body.light-theme #filter-btn-all.active,
+        body.light-theme #filter-btn-all.active:hover,
+        body.light-theme #filter-btn-web.active,
+        body.light-theme #filter-btn-web.active:hover,
+        body.light-theme #filter-btn-python.active,
+        body.light-theme #filter-btn-python.active:hover {
+            background: var(--ember) !important;
+            color: #ffffff !important;
+            border-color: var(--ember) !important;
+        }
+
+        body.light-theme .type-filter-bar .filter-btn.active *,
+        body.light-theme .type-filter-bar .filter-btn.active:hover * {
+            color: #ffffff !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+
+
+        /* =========================================================
+           FINAL PYTHON CONSOLE LAYOUT LOCK
+           Die Konsole bleibt immer an derselben Position und Höhe.
+           Der Editor darf bei langem Code nicht mehr die Konsole
+           nach unten schieben – in Light- und Dark-Mode identisch.
+           ========================================================= */
+        /* Python-Tab darf nur angezeigt werden, wenn der Python-Tab aktiv ist.
+           Dadurch vermischt sich Python nicht mehr mit dem Web-Tab. */
+        #python-tab {
+            min-height: 0 !important;
+            height: 100% !important;
+            overflow: hidden !important;
+            flex-direction: column;
+        }
+
+        #python-tab:not(.active) {
+            display: none !important;
+        }
+
+        #python-tab.active {
+            display: flex !important;
+            min-height: 0 !important;
+            height: 100% !important;
+            overflow: hidden !important;
+        }
+
+        .py-editor-wrapper {
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            overflow: hidden !important;
+        }
+
+        .py-editor-wrapper .CodeMirror {
+            min-height: 0 !important;
+            height: 100% !important;
+            max-height: 100% !important;
+            overflow: hidden !important;
+        }
+
+        .python-terminal {
+            height: 220px !important;
+            min-height: 220px !important;
+            max-height: 220px !important;
+            flex: 0 0 220px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        #python-output {
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+        }
+
+        /* Dark Mode: Python-Ausgabe immer weiß statt grün. */
+        body:not(.light-theme) #python-output,
+        body:not(.light-theme) #python-input,
+        body:not(.light-theme) #python-input-prompt {
+            color: var(--text) !important;
+        }
+
+        body:not(.light-theme) #python-input {
+            caret-color: var(--ember) !important;
+        }
+
+    
